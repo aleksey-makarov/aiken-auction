@@ -1,55 +1,75 @@
 # aiken-auction
 
-Write validators in the `validators` folder, and supporting functions in the `lib` folder using `.ak` as a file extension.
+> A naïve implementation of simple
+> [forward](https://en.wikipedia.org/wiki/Forward_auction)
+> auction for
+> [Cardano](https://cardano.org/)
+> blockchain in
+> [Aiken](https://aiken-lang.org/)
+> programming language.
+> This is an education project for
+> [Eurgo Academy](https://education.emurgo.io/)
+> "Cardano Developer Professional" programm.
 
-For example, as `validators/always_true.ak`
+## Protocol
 
-```gleam
-validator {
-  fn spend(_datum: Data, _redeemer: Data, _context: Data) -> Bool {
-    True
-  }
+Let's call any eUTxO on the address of the smart contract *lot*.
+
+### Listing
+
+To participate in the auction, *seller* issues a transaction with uTXO to the contract address.
+This uTXO should have exactly one token as its value and data of type `LotData`.
+
+```Rust
+type Bid {
+  bidOwner: VerificationKeyHash,
+  value: Int,
+}
+
+type LotData {
+  lotOwner: VerificationKeyHash,
+  startingBid: Int,
+  bidIncrement: Int,
+  bids: List<Bid>,
+  taken: Bool,
 }
 ```
 
-## Building
+The `lotOwner` should be the seller's public key hash.
+`startingBid` and `bidIncrement` should be the starting bid and bid increment,
+`bids` list should be empty, `taken` should be false.
 
-```sh
-aiken build
-```
+### Bidding
 
-## Testing
+When *Bidder* wants to make a bid, it issues a transaction
+that has the *lot* as an input, to the auction script address as an output.
+`MkBid` constructor of type `AuctionRedeemer` should be specified as a redeemer.
 
-You can write tests in any module using the `test` keyword. For example:
-
-```gleam
-test foo() {
-  1 + 1 == 2
+```Rust
+type AuctionRedeemer {
+  MkBid { bidOwner: VerificationKeyHash, value: Int, }
+  TakeBid
+  ReturnBid
+  ReceiveLot
 }
 ```
 
-To run all tests, simply do:
+`bidOwner` should be the bidder's public key hash,
+`bidValue` should be the value of the bid.
+In a separate input *bidder* should provide the bid whose value should not be less than
+`bidValue` in lovelace.
 
-```sh
-aiken check
-```
+### Taking a bid
 
-To run only tests matching the string `foo`, do:
+When *seller* decides to take a bid, he creates a transaction with the `TakeBid` constructor.
+One of its output should be to the script's address, another one -- to the *seller*'s address,
+withdrawing the value of the biggest bid.
 
-```sh
-aiken check -m foo
-```
+### Returning a bid
 
-## Documentation
+Similarly *Bidders* whose bid did not paid off can return the blocked value providing
+`ReturnBid` as a redeemer.
 
-If you're writing a library, you might want to generate an HTML documentation for it.
+### Receiving the lot
 
-Use:
-
-```sh
-aiken docs
-```
-
-## Resources
-
-Find more on the [Aiken's user manual](https://aiken-lang.org).
+Similarly *Bidders* whose bid paid off can receive the lot providing `ReturnBid` as a redeemer.
