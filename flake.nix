@@ -11,12 +11,17 @@
       url = "github:nix-community/nix-vscode-extensions";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    aiken = {
+      url = "github:aiken-lang/aiken";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs = {
     self,
     nixpkgs,
     nix-vscode-extensions,
+    aiken,
   }: let
     system = "x86_64-linux";
 
@@ -28,7 +33,7 @@
       vscode = pkgs.vscodium;
       vscodeExtensions = [
         extensions.vscode-marketplace.bbenoist.nix
-        # extensions.vscode-marketplace.TxPipe.aiken
+        extensions.vscode-marketplace.txpipe.aiken
         # extensions.vscode-marketplace.github.vscode-github-actions
         # extensions.vscode-marketplace.ms-vscode.cpptools
         # extensions.vscode-marketplace.haskell.haskell
@@ -36,11 +41,10 @@
       ];
     };
   in {
-
     devShells.${system} = rec {
       aiken-auction = with pkgs;
         mkShell {
-          packages = [vscode pkgs.deno];
+          packages = [vscode pkgs.deno aiken.packages.${system}.aiken];
           # inputsFrom = [pkgs.virtio-target];
           shellHook = ''
             export HOME=$(pwd)
