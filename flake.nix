@@ -40,7 +40,7 @@
     devShells.${system} = rec {
       aiken-auction = with pkgs;
         mkShell {
-          packages = [vscode];
+          packages = [vscode pkgs.deno];
           # inputsFrom = [pkgs.virtio-target];
           shellHook = ''
             export HOME=$(pwd)
