@@ -24,8 +24,8 @@ Let's call any eUTxO on the address of the smart contract *lot*.
 
 ### Listing
 
-To participate in the auction, *seller* issues a transaction with uTXO to the contract address.
-This uTXO should have exactly one token as its value and data of type `LotData`.
+To participate in the auction, *seller* issues a transaction with eUTxO to the contract address.
+This eUTxO should have exactly one token as its value and data of type `LotData`.
 
 ```Rust
 type Bid {
@@ -79,4 +79,4 @@ Similarly *Bidders* whose bid did not paid off can return the blocked value prov
 
 ### Receiving the lot
 
-Similarly *Bidders* whose bid paid off can receive the lot providing `ReturnBid` as a redeemer.
+Similarly *Bidders* whose bid paid off can receive the lot providing `ReceiveLot` as a redeemer.
