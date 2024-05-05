@@ -13,6 +13,13 @@
 
 ## Protocol
 
+Clients to this service want to sell their NFTs (*sellers*).
+They deposit their tokens to the script address.
+Other clients that are interested in that NFT (*bidders*) make bids.
+When *seller* decides to sell his lot to the best bidder,
+he can withdraw the (t)Ada.
+After that the *bidder* can withdraw the NFT.
+
 Let's call any eUTxO on the address of the smart contract *lot*.
 
 ### Listing
