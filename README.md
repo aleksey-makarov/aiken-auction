@@ -54,7 +54,7 @@ that has the *lot* as an input, to the auction script address as an output.
 
 ```Rust
 type AuctionRedeemer {
-  MkBid { bidOwner: VerificationKeyHash, value: Int, }
+  MakeBid { bidOwner: VerificationKeyHash, value: Int, }
   TakeBid
   ReturnBid
   ReceiveLot

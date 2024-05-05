@@ -26,7 +26,7 @@ type LotData {
 }
 
 type AuctionRedeemer {
-  MkBid { bidOwner: VerificationKeyHash, value: Int }
+  MakeBid { bidOwner: VerificationKeyHash, value: Int }
   TakeBid
   ReturnBid
   ReceiveLot
@@ -39,7 +39,7 @@ validator {
     ctx: ScriptContext,
   ) -> Bool {
     when redeemer is {
-      MkBid { bidOwner, value } ->
+      MakeBid { bidOwner, value } ->
         must_be_signed_by(ctx.transaction, bidOwner) && should_provide_value(
           ctx.transaction,
           value,
@@ -90,7 +90,7 @@ fn mk_output_reference() -> OutputReference {
 }
 
 fn mk_mk_bid_redeemer() -> AuctionRedeemer {
-  MkBid { bidOwner: "", value: 42 }
+  MakeBid { bidOwner: "", value: 42 }
 }
 
 fn mk_lot_data() -> LotData {
