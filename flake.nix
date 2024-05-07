@@ -34,10 +34,8 @@
       vscodeExtensions = [
         extensions.vscode-marketplace.bbenoist.nix
         extensions.vscode-marketplace.txpipe.aiken
-        # extensions.vscode-marketplace.github.vscode-github-actions
-        # extensions.vscode-marketplace.ms-vscode.cpptools
-        # extensions.vscode-marketplace.haskell.haskell
-        # extensions.vscode-marketplace.justusadam.language-haskell
+        extensions.vscode-marketplace.denoland.vscode-deno
+        extensions.vscode-marketplace.laurencebahiirwa.deno-std-lib-snippets
       ];
     };
   in {
@@ -45,10 +43,11 @@
       aiken-auction = with pkgs;
         mkShell {
           packages = [vscode pkgs.deno aiken.packages.${system}.aiken];
-          # inputsFrom = [pkgs.virtio-target];
           shellHook = ''
             export HOME=$(pwd)
-            # echo "Hello world"
+            if [ -f ~/.secrets.txt ] ; then
+                . ~/.secrets.txt
+            fi
           '';
         };
       default = aiken-auction;
