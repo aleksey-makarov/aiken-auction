@@ -9,7 +9,7 @@
 > programming language.
 > This is an education project for
 > [Eurgo Academy](https://education.emurgo.io/)
-> "Cardano Developer Professional" programm.
+> "Cardano Developer Professional" program.
 
 ## Protocol
 
@@ -50,7 +50,7 @@ The `lotOwner` should be the seller's public key hash.
 
 When *Bidder* wants to make a bid, it issues a transaction
 that has the *lot* as an input, to the auction script address as an output.
-`MkBid` constructor of type `AuctionRedeemer` should be specified as a redeemer.
+`MakeBid` constructor of type `AuctionRedeemer` should be specified as a redeemer.
 
 ```Rust
 type AuctionRedeemer {
