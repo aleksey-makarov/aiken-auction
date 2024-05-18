@@ -11,21 +11,28 @@
 > [Eurgo Academy](https://education.emurgo.io/)
 > "Cardano Developer Professional" program.
 
+This is a rewrite in Aiken of an educational project by
+[Plutus Pioneer Program](https://plutus-pioneer-program.readthedocs.io/en/latest/pioneer/week1.html).
+
+The original code is here:
+[EnglishAuction.hs](https://github.com/input-output-hk/plutus-pioneer-program/blob/second-iteration/code/week01/src/Week01/EnglishAuction.hs).
+
 ## Protocol
 
 Clients to this service want to sell their NFTs (*sellers*).
-They deposit their tokens to the script address.
-Other clients that are interested in that NFT (*bidders*) make bids.
-When *seller* decides to sell his lot to the best bidder,
-he can withdraw the (t)Ada.
-After that the *bidder* can withdraw the NFT.
+They deposit their tokens to the script address, specifying time in the future when the auction
+should be closed.
+Other clients that are interested in that NFT (*bidders*) make bids by locking ADA values in the contract address.
+When the time period specified by *seller* is over, he can close the auction.
+When the *seller* closes auction, if there were bids then it receives the locked ADA and sends the lot to the last bidder,
+if not, he receives the lot back.
 
 Let's call any eUTxO on the address of the smart contract *lot*.
 
 ### Listing
 
 To participate in the auction, *seller* issues a transaction with eUTxO to the contract address.
-This eUTxO should have exactly one token as its value and data of type `LotData`.
+This eUTxO should have exactly one token as its value and data of type `LotDatum`.
 
 ```Rust
 type Bid {
@@ -33,50 +40,47 @@ type Bid {
   value: Int,
 }
 
-type LotData {
-  lotOwner: VerificationKeyHash,
-  startingBid: Int,
-  bidIncrement: Int,
-  bids: List<Bid>,
-  taken: Bool,
+type LotDatum {
+  seller:     PubKeyHash,
+  deadline:   PosixTime,
+  minBid:     Int,
+  currency:   PolicyId,
+  token:      AssetName,
+  highestBid: Option<Bid>,
 }
 ```
 
-The `lotOwner` should be the seller's public key hash.
-`startingBid` and `bidIncrement` should be the starting bid and bid increment,
-`bids` list should be empty, `taken` should be false.
+The `seller` fileld should be the seller's public key hash.
+`deadline` is the time after which the auction should be losed
+`minBid` is minimal bid,
+`currency` and `token` specify the NFT locked by seller,
+`highestBid` is the last bid.
 
 ### Bidding
 
 When *Bidder* wants to make a bid, it issues a transaction
 that has the *lot* as an input, to the auction script address as an output.
 `MakeBid` constructor of type `AuctionRedeemer` should be specified as a redeemer.
+If is is not the first bid, the transaction should also return the locked value to
+the previous *bidder*.
 
 ```Rust
 type AuctionRedeemer {
-  MakeBid { bidOwner: VerificationKeyHash, value: Int, }
-  TakeBid
-  ReturnBid
-  ReceiveLot
+  MakeBid(Bid)
+  Close
 }
 ```
 
-`bidOwner` should be the bidder's public key hash,
-`bidValue` should be the value of the bid.
-In a separate input *bidder* should provide the bid whose value should not be less than
-`bidValue` in lovelace.
+### Closing the auction
 
-### Taking a bid
+When the aution timeframe is over and no bids were made, *seller* should get its NFT back.
+If there were bids, he should send the locked NFT to the last *bidder* and receive
+the ADA locked by the last *bidder*.
 
-When *seller* decides to take a bid, he creates a transaction with the `TakeBid` constructor.
-One of its output should be to the script's address, another one -- to the *seller*'s address,
-withdrawing the value of the biggest bid.
+## Status
 
-### Returning a bid
+**18 May 2024**: Everything except time checking is implemented.
+There is quite a lot of tests that pass.
+I am going to redesign tests and check everything on the Preview testnet.
 
-Similarly *Bidders* whose bid did not paid off can return the blocked value providing
-`ReturnBid` as a redeemer.
-
-### Receiving the lot
-
-Similarly *Bidders* whose bid paid off can receive the lot providing `ReceiveLot` as a redeemer.
+Also I am going to implement some off-chain code in TS.
