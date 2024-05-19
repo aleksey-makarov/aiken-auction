@@ -196,23 +196,7 @@ fn add_input(p: Transaction, output_reference: Int, address: PubKeyHash, value: 
   }
 }
 
-fn add_output(p: Transaction, address: PubKeyHash, value: Int, maybeBid: Option<LotDatum>) -> Transaction {
-
-  let maybeDataHash = maybeBid |> option.map(
-    fn (x) { (x, mk_lot_datum_hash(x)) }
-  )
-
-  let output = mk_output(address, mk_value_with_nft(value), maybeDataHash |> option.map(second))
-
-  let t = Transaction { ..p, outputs: [output, ..p.outputs] }
-
-  when maybeDataHash is {
-    Some((data, hash)) -> Transaction { ..t, datums: (p.datums |> dict.insert(key: hash, value: data, compare: bytearray.compare))}
-    None -> t
-  }
-}
-
-fn add_output1(p: Transaction, address: PubKeyHash, value: Value, maybeBid: Option<LotDatum>) -> Transaction {
+fn add_output(p: Transaction, address: PubKeyHash, value: Value, maybeBid: Option<LotDatum>) -> Transaction {
 
   let maybeDataHash = maybeBid |> option.map(
     fn (x) { (x, mk_lot_datum_hash(x)) }
@@ -257,9 +241,9 @@ fn mk_insufficient_bid_test(bid: Int, minBid: Int, highestBid: Option<Int>) -> B
     mk_context(
       transaction.placeholder() |> add_input(0, my_pub_key_hash, 100, Some(d))
                        |> add_input(1, some_pub_key_hash, 100, None)
-                       |> add_output(some_pub_key_hash, 100, None)
-                       |> add_output(refund_pub_key_hash, refund, None)
-                       |> add_output(my_pub_key_hash, bid, Some(dnew))
+                       |> add_output(some_pub_key_hash, mk_value_with_nft(100), None)
+                       |> add_output(refund_pub_key_hash, mk_value_with_nft(refund), None)
+                       |> add_output(my_pub_key_hash, mk_value_with_nft(bid), Some(dnew))
     )
   )
 }
@@ -308,8 +292,8 @@ test test_add_input() {
   let ctx = mk_context(
     transaction.placeholder() |> add_input(0, my_pub_key_hash, 100, Some(d))
                      |> add_input(1, some_pub_key_hash, 100, None)
-                     |> add_output(my_pub_key_hash, 100, None)
-                     |> add_output(some_pub_key_hash, 100, Some(d))
+                     |> add_output(my_pub_key_hash, mk_value_with_nft(100), None)
+                     |> add_output(some_pub_key_hash, mk_value_with_nft(100), Some(d))
   )
 
   expect Spend(ownOutputRef) = ctx.purpose
@@ -328,8 +312,8 @@ test test_add_input_2() {
   let ctx = mk_context(
     transaction.placeholder() |> add_input(0, my_pub_key_hash, 100, Some(d))
                      |> add_input(1, some_pub_key_hash, 100, None)
-                     |> add_output(my_pub_key_hash, 100, None)
-                     |> add_output(some_pub_key_hash, 100, Some(d))
+                     |> add_output(my_pub_key_hash, mk_value_with_nft(100), None)
+                     |> add_output(some_pub_key_hash, mk_value_with_nft(100), Some(d))
   )
 
   let allOutputReferences = ctx.transaction.inputs |> list.map(fn (i: Input) { i.output_reference} )
@@ -343,9 +327,9 @@ fn mk_correct_bid_output_datum_test(b: Bid, iData: LotDatum, oData: Option<LotDa
     mk_context(
       transaction.placeholder() |> add_input(0, my_pub_key_hash, 100, Some(iData))
                        |> add_input(1, some_pub_key_hash, 100, None)
-                       |> add_output(refund_pub_key_hash, 1000, None)
-                       |> add_output(some_pub_key_hash, 100, None)
-                       |> add_output(my_pub_key_hash, 1010, oData)
+                       |> add_output(refund_pub_key_hash, mk_value_with_nft(1000), None)
+                       |> add_output(some_pub_key_hash, mk_value_with_nft(100), None)
+                       |> add_output(my_pub_key_hash, mk_value_with_nft(1010), oData)
     )
   )
 }
@@ -408,7 +392,7 @@ test test_correct_bid_output_datum_4() fail {
 test test_check_transaction_output() {
   let t = transaction.placeholder() |> add_input(0, my_pub_key_hash, 100, None)
                            |> add_input(1, some_pub_key_hash, 100, None)
-                           |> add_output(my_pub_key_hash, 1010, None)
+                           |> add_output(my_pub_key_hash, mk_value_with_nft(1010), None)
 
   expect [x] = t.outputs
   value.lovelace_of(x.value) == 1010
@@ -417,7 +401,7 @@ test test_check_transaction_output() {
 test test_check_transaction_output_1() {
   let t = transaction.placeholder() |> add_input(0, my_pub_key_hash, 100, None)
                            |> add_input(1, some_pub_key_hash, 100, None)
-                           |> add_output(my_pub_key_hash, 1010, None)
+                           |> add_output(my_pub_key_hash, mk_value_with_nft(1010), None)
 
   expect [x] = t.outputs
   value.quantity_of(x.value, some_policy_id, some_asset_name) == 1
@@ -444,9 +428,9 @@ test test_correct_bid_output_value() {
   let c = mk_context(
     transaction.placeholder() |> add_input(0, my_pub_key_hash, 1000, Some(d))
                               |> add_input(1, some_pub_key_hash, 100, None)
-                              |> add_output1(some_pub_key_hash, some_value, None)
-                              |> add_output1(refund_pub_key_hash, some_value_1000, None)
-                              |> add_output1(my_pub_key_hash, mk_value_with_nft(1010), Some(dnew))
+                              |> add_output(some_pub_key_hash, some_value, None)
+                              |> add_output(refund_pub_key_hash, some_value_1000, None)
+                              |> add_output(my_pub_key_hash, mk_value_with_nft(1010), Some(dnew))
   )
   auction(d, r, c)
 }
@@ -473,9 +457,9 @@ test test_correct_bid_output_value_1() fail {
   let c = mk_context(
     transaction.placeholder() |> add_input(0, my_pub_key_hash, 1000, Some(d))
                               |> add_input(1, some_pub_key_hash, 100, None)
-                              |> add_output1(some_pub_key_hash, some_value, None)
-                              |> add_output1(refund_pub_key_hash, some_value_1000, None)
-                              |> add_output1(my_pub_key_hash, mk_value_with_nft(1000), Some(dnew))
+                              |> add_output(some_pub_key_hash, some_value, None)
+                              |> add_output(refund_pub_key_hash, some_value_1000, None)
+                              |> add_output(my_pub_key_hash, mk_value_with_nft(1000), Some(dnew))
   )
   auction(d, r, c)
 }
@@ -502,9 +486,9 @@ test test_correct_bid_output_value_2() fail {
   let c = mk_context(
     transaction.placeholder() |> add_input(0, my_pub_key_hash, 1000, Some(d))
                               |> add_input(1, some_pub_key_hash, 100, None)
-                              |> add_output1(some_pub_key_hash, some_value, None)
-                              |> add_output1(refund_pub_key_hash, some_value_1000, None)
-                              |> add_output1(my_pub_key_hash, value.from_lovelace(1010), Some(dnew))
+                              |> add_output(some_pub_key_hash, some_value, None)
+                              |> add_output(refund_pub_key_hash, some_value_1000, None)
+                              |> add_output(my_pub_key_hash, value.from_lovelace(1010), Some(dnew))
   )
   auction(d, r, c)
 }
@@ -535,9 +519,9 @@ test test_correct_bid_output_value_3() fail {
   let c = mk_context(
     transaction.placeholder() |> add_input(0, my_pub_key_hash, 1000, Some(d))
                               |> add_input(1, some_pub_key_hash, 100, None)
-                              |> add_output1(some_pub_key_hash, some_value, None)
-                              |> add_output1(refund_pub_key_hash, some_value_1000, None)
-                              |> add_output1(my_pub_key_hash, mk_value_with_wrong_nft(1010), Some(dnew))
+                              |> add_output(some_pub_key_hash, some_value, None)
+                              |> add_output(refund_pub_key_hash, some_value_1000, None)
+                              |> add_output(my_pub_key_hash, mk_value_with_wrong_nft(1010), Some(dnew))
   )
   auction(d, r, c)
 }
@@ -568,9 +552,9 @@ test test_correct_bid_output_value_4() fail {
   let c = mk_context(
     transaction.placeholder() |> add_input(0, my_pub_key_hash, 1000, Some(d))
                               |> add_input(1, some_pub_key_hash, 100, None)
-                              |> add_output1(some_pub_key_hash, some_value, None)
-                              |> add_output1(refund_pub_key_hash, some_value_1000, None)
-                              |> add_output1(my_pub_key_hash, mk_value_with_2nft(1010), Some(dnew))
+                              |> add_output(some_pub_key_hash, some_value, None)
+                              |> add_output(refund_pub_key_hash, some_value_1000, None)
+                              |> add_output(my_pub_key_hash, mk_value_with_2nft(1010), Some(dnew))
   )
   auction(d, r, c)
 }
@@ -597,9 +581,9 @@ test test_correct_bid_refund_1() fail {
   let c = mk_context(
     transaction.placeholder() |> add_input(0, my_pub_key_hash, 1000, Some(d))
                               |> add_input(1, some_pub_key_hash, 100, None)
-                              |> add_output1(some_pub_key_hash, some_value, None)
-                              |> add_output1(refund_pub_key_hash, some_value_bad, None)
-                              |> add_output1(my_pub_key_hash, mk_value_with_nft(1010), Some(dnew))
+                              |> add_output(some_pub_key_hash, some_value, None)
+                              |> add_output(refund_pub_key_hash, some_value_bad, None)
+                              |> add_output(my_pub_key_hash, mk_value_with_nft(1010), Some(dnew))
   )
   auction(d, r, c)
 }
@@ -625,8 +609,8 @@ test test_correct_bid_refund_2() fail {
   let c = mk_context(
     transaction.placeholder() |> add_input(0, my_pub_key_hash, 1000, Some(d))
                               |> add_input(1, some_pub_key_hash, 100, None)
-                              |> add_output1(some_pub_key_hash, some_value, None)
-                              |> add_output1(my_pub_key_hash, mk_value_with_nft(1010), Some(dnew))
+                              |> add_output(some_pub_key_hash, some_value, None)
+                              |> add_output(my_pub_key_hash, mk_value_with_nft(1010), Some(dnew))
   )
   auction(d, r, c)
 }
