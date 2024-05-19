@@ -172,7 +172,7 @@ fn mk_lot_datum_hash(d: LotDatum) -> DataHash {
 //   fn (x) { g(f(x)) }
 // }
 
-// fn id(x: a) -> a { x }
+fn id(x: a) -> a { x }
 
 // fn first (x: (a, b)) -> a { x.1st }
 
@@ -613,4 +613,68 @@ test test_correct_bid_refund_2() fail {
                               |> add_output(my_pub_key_hash, mk_value_with_nft(1010), Some(dnew))
   )
   auction(d, r, c)
+}
+
+// ----------------------------------------------------------------------------
+// Test suit v2
+// ----------------------------------------------------------------------------
+
+fn run_test_(
+  first: Bool,
+  fixDatum: fn (LotDatum) -> LotDatum,
+  fixRedeemer: fn (AuctionRedeemer) -> AuctionRedeemer,
+  fixTransaction: fn (Transaction) -> Transaction,
+) -> Bool {
+
+  let d = LotDatum {
+      seller:     seller_pub_key_hash,
+      deadline:   10,
+      minBid:     100,
+      currency:   some_asset_name,
+      token:      some_policy_id,
+      highestBid: if first { None } else { Some (Bid (refund_pub_key_hash, 1000)) },
+    }
+
+  let dnew = LotDatum { ..d, highestBid: Some (Bid (bidder_pub_key_hash, 1010))}
+
+  let r = MakeBid (
+    Bid {
+      bidOwner: bidder_pub_key_hash,
+      value: 1010,
+    }
+  )
+
+  let t1 = transaction.placeholder()
+    |> add_input(0, my_pub_key_hash, mk_value_with_nft(1000), Some(d))
+    |> add_input(1, some_pub_key_hash, value.from_lovelace(100), None)
+    |> add_output(some_pub_key_hash, value.from_lovelace(100), None)
+    |> add_output(my_pub_key_hash, mk_value_with_nft(1010), Some(dnew))
+
+  let t = if first { t1 } else { add_output(t1, refund_pub_key_hash, value.from_lovelace(1000), None) }
+
+  auction(fixDatum(d), fixRedeemer(r), mk_context(fixTransaction(t)))
+}
+
+fn run_test_first(
+  fixDatum: fn (LotDatum) -> LotDatum,
+  fixRedeemer: fn (AuctionRedeemer) -> AuctionRedeemer,
+  fixTransaction: fn (Transaction) -> Transaction,
+) -> Bool {
+  run_test_(True, fixDatum, fixRedeemer, fixTransaction)
+}
+
+fn run_test(
+  fixDatum: fn (LotDatum) -> LotDatum,
+  fixRedeemer: fn (AuctionRedeemer) -> AuctionRedeemer,
+  fixTransaction: fn (Transaction) -> Transaction,
+) -> Bool {
+  run_test_(False, fixDatum, fixRedeemer, fixTransaction)
+}
+
+test test_run_test_first() {
+  run_test_first(id, id, id)
+}
+
+test test_run_test() {
+  run_test(id, id, id)
 }
