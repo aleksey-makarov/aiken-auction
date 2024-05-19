@@ -131,25 +131,8 @@ const bidder_pub_key_hash : PubKeyHash = #"aabbccddeeff0000000000000000000000000
 const refund_pub_key_hash : PubKeyHash = #"00000000000000000000000000000000000000000000121212121212"
 const seller_pub_key_hash : PubKeyHash = #"00000000000000000000000000000000000000000000343434343434"
 
-const some_fee : Int = 1000
-
 const some_policy_id = #"abcdef0123456789"
 const some_asset_name = "asdf"
-
-fn mk_value(ada: Int) -> Value {
-  value.from_lovelace(ada) |> value.add(some_policy_id, some_asset_name, 1)
-}
-
-fn mk_lot_datum(maybeBid: Option<Bid>) -> LotDatum {
-  LotDatum {
-    seller:     my_pub_key_hash,
-    deadline:   100,
-    minBid:     100,
-    currency:   some_policy_id,
-    token:      some_asset_name,
-    highestBid: maybeBid,
-  }
-}
 
 fn mk_output_reference(i: Int) -> OutputReference {
   OutputReference { transaction_id: TransactionId("2d86702c"), output_index: i }
@@ -160,23 +143,18 @@ fn mk_context(t: Transaction) -> ScriptContext {
   ScriptContext { purpose, transaction: t }
 }
 
-fn mk_transaction() -> Transaction {
-  transaction.placeholder()
-    |> fn(t) { Transaction { ..t, fee: value.from_lovelace(some_fee) } }
+fn mk_value_with_nft(v: Int) -> Value {
+  value.from_lovelace(v) |> value.add(some_policy_id, some_asset_name, 1)
 }
 
-fn mk_hash(d: Data) -> DataHash {
-  blake2b_256(builtin.serialise_data(d))
-}
-
-fn mk_output(address: PubKeyHash, value: Int, maybeDataHash: Option<DataHash>) -> Output {
+fn mk_output(address: PubKeyHash, value: Value, maybeDataHash: Option<DataHash>) -> Output {
     Output {
       address:
         Address {
           payment_credential: VerificationKeyCredential(address),
           stake_credential: None,
         },
-      value: mk_value(value),
+      value: value,
       datum: when maybeDataHash is {
           Some(hash) -> DatumHash(hash)
           None -> NoDatum
@@ -185,9 +163,9 @@ fn mk_output(address: PubKeyHash, value: Int, maybeDataHash: Option<DataHash>) -
     }
 }
 
-fn to_data(d: LotDatum) -> Data {
+fn mk_lot_datum_hash(d: LotDatum) -> DataHash {
   let aData: Data = d
-  aData
+  blake2b_256(builtin.serialise_data(aData))
 }
 
 // fn composition(g: fn (b) -> c, f: fn (a) -> b) -> fn (a) -> c {
@@ -203,10 +181,10 @@ fn second(x: (a, b)) -> b { x.2nd }
 fn add_input(p: Transaction, output_reference: Int, address: PubKeyHash, value: Int, maybeBid: Option<LotDatum>) -> Transaction {
 
   let maybeDataHash = maybeBid |> option.map(
-    fn (x) { (x, mk_hash(to_data(x))) }
+    fn (x) { (x, mk_lot_datum_hash(x)) }
   )
 
-  let output = mk_output(address, value, maybeDataHash |> option.map(second))
+  let output = mk_output(address, mk_value_with_nft(value), maybeDataHash |> option.map(second))
 
   let input = Input { output_reference: mk_output_reference(output_reference), output }
 
@@ -221,7 +199,23 @@ fn add_input(p: Transaction, output_reference: Int, address: PubKeyHash, value: 
 fn add_output(p: Transaction, address: PubKeyHash, value: Int, maybeBid: Option<LotDatum>) -> Transaction {
 
   let maybeDataHash = maybeBid |> option.map(
-    fn (x) { (x, mk_hash(to_data(x))) }
+    fn (x) { (x, mk_lot_datum_hash(x)) }
+  )
+
+  let output = mk_output(address, mk_value_with_nft(value), maybeDataHash |> option.map(second))
+
+  let t = Transaction { ..p, outputs: [output, ..p.outputs] }
+
+  when maybeDataHash is {
+    Some((data, hash)) -> Transaction { ..t, datums: (p.datums |> dict.insert(key: hash, value: data, compare: bytearray.compare))}
+    None -> t
+  }
+}
+
+fn add_output1(p: Transaction, address: PubKeyHash, value: Value, maybeBid: Option<LotDatum>) -> Transaction {
+
+  let maybeDataHash = maybeBid |> option.map(
+    fn (x) { (x, mk_lot_datum_hash(x)) }
   )
 
   let output = mk_output(address, value, maybeDataHash |> option.map(second))
@@ -261,7 +255,7 @@ fn mk_insufficient_bid_test(bid: Int, minBid: Int, highestBid: Option<Int>) -> B
       }
     ),
     mk_context(
-      mk_transaction() |> add_input(0, my_pub_key_hash, 100, Some(d))
+      transaction.placeholder() |> add_input(0, my_pub_key_hash, 100, Some(d))
                        |> add_input(1, some_pub_key_hash, 100, None)
                        |> add_output(some_pub_key_hash, 100, None)
                        |> add_output(refund_pub_key_hash, refund, None)
@@ -303,11 +297,19 @@ test test_mk_output_reference_1() fail {
 }
 
 test test_add_input() {
+  let d = LotDatum {
+    seller:     my_pub_key_hash,
+    deadline:   100,
+    minBid:     100,
+    currency:   some_policy_id,
+    token:      some_asset_name,
+    highestBid: None,
+  }
   let ctx = mk_context(
-    mk_transaction() |> add_input(0, my_pub_key_hash, 100, Some(mk_lot_datum(None)))
+    transaction.placeholder() |> add_input(0, my_pub_key_hash, 100, Some(d))
                      |> add_input(1, some_pub_key_hash, 100, None)
                      |> add_output(my_pub_key_hash, 100, None)
-                     |> add_output(some_pub_key_hash, 100, Some(mk_lot_datum(None)))
+                     |> add_output(some_pub_key_hash, 100, Some(d))
   )
 
   expect Spend(ownOutputRef) = ctx.purpose
@@ -315,11 +317,19 @@ test test_add_input() {
 }
 
 test test_add_input_2() {
+  let d = LotDatum {
+    seller:     my_pub_key_hash,
+    deadline:   100,
+    minBid:     100,
+    currency:   some_policy_id,
+    token:      some_asset_name,
+    highestBid: None,
+  }
   let ctx = mk_context(
-    mk_transaction() |> add_input(0, my_pub_key_hash, 100, Some(mk_lot_datum(None)))
+    transaction.placeholder() |> add_input(0, my_pub_key_hash, 100, Some(d))
                      |> add_input(1, some_pub_key_hash, 100, None)
                      |> add_output(my_pub_key_hash, 100, None)
-                     |> add_output(some_pub_key_hash, 100, Some(mk_lot_datum(None)))
+                     |> add_output(some_pub_key_hash, 100, Some(d))
   )
 
   let allOutputReferences = ctx.transaction.inputs |> list.map(fn (i: Input) { i.output_reference} )
@@ -331,7 +341,7 @@ fn mk_correct_bid_output_datum_test(b: Bid, iData: LotDatum, oData: Option<LotDa
     iData,
     MakeBid (b),
     mk_context(
-      mk_transaction() |> add_input(0, my_pub_key_hash, 100, Some(iData))
+      transaction.placeholder() |> add_input(0, my_pub_key_hash, 100, Some(iData))
                        |> add_input(1, some_pub_key_hash, 100, None)
                        |> add_output(refund_pub_key_hash, 1000, None)
                        |> add_output(some_pub_key_hash, 100, None)
@@ -396,7 +406,7 @@ test test_correct_bid_output_datum_4() fail {
 }
 
 test test_check_transaction_output() {
-  let t = mk_transaction() |> add_input(0, my_pub_key_hash, 100, None)
+  let t = transaction.placeholder() |> add_input(0, my_pub_key_hash, 100, None)
                            |> add_input(1, some_pub_key_hash, 100, None)
                            |> add_output(my_pub_key_hash, 1010, None)
 
@@ -405,7 +415,7 @@ test test_check_transaction_output() {
 }
 
 test test_check_transaction_output_1() {
-  let t = mk_transaction() |> add_input(0, my_pub_key_hash, 100, None)
+  let t = transaction.placeholder() |> add_input(0, my_pub_key_hash, 100, None)
                            |> add_input(1, some_pub_key_hash, 100, None)
                            |> add_output(my_pub_key_hash, 1010, None)
 
@@ -413,44 +423,9 @@ test test_check_transaction_output_1() {
   value.quantity_of(x.value, some_policy_id, some_asset_name) == 1
 }
 
-fn mk_output_1(address: PubKeyHash, value: Value, maybeDataHash: Option<DataHash>) -> Output {
-    Output {
-      address:
-        Address {
-          payment_credential: VerificationKeyCredential(address),
-          stake_credential: None,
-        },
-      value: value,
-      datum: when maybeDataHash is {
-          Some(hash) -> DatumHash(hash)
-          None -> NoDatum
-        },
-      reference_script: None,
-    }
-}
-
-fn add_output1(p: Transaction, address: PubKeyHash, value: Value, maybeBid: Option<LotDatum>) -> Transaction {
-
-  let maybeDataHash = maybeBid |> option.map(
-    fn (x) { (x, mk_hash(to_data(x))) }
-  )
-
-  let output = mk_output_1(address, value, maybeDataHash |> option.map(second))
-
-  let t = Transaction { ..p, outputs: [output, ..p.outputs] }
-
-  when maybeDataHash is {
-    Some((data, hash)) -> Transaction { ..t, datums: (p.datums |> dict.insert(key: hash, value: data, compare: bytearray.compare))}
-    None -> t
-  }
-}
-
 test test_correct_bid_output_value() {
   let some_value = value.from_lovelace(100)
   let some_value_1000 = value.from_lovelace(1000)
-  let mk_value_with_nft = fn (v: Int) {
-    value.from_lovelace(v) |> value.add(some_policy_id, some_asset_name, 1)
-  }
   let d = LotDatum {
       seller:     seller_pub_key_hash,
       deadline:   10,
@@ -480,9 +455,6 @@ test test_correct_bid_output_value() {
 test test_correct_bid_output_value_1() fail {
   let some_value = value.from_lovelace(100)
   let some_value_1000 = value.from_lovelace(1000)
-  let mk_value_with_nft = fn (v: Int) {
-    value.from_lovelace(v) |> value.add(some_policy_id, some_asset_name, 1)
-  }
   let d = LotDatum {
       seller:     seller_pub_key_hash,
       deadline:   10,
@@ -541,9 +513,10 @@ test test_correct_bid_output_value_2() fail {
 test test_correct_bid_output_value_3() fail {
   let some_value = value.from_lovelace(100)
   let some_value_1000 = value.from_lovelace(1000)
-  let mk_value_with_nft = fn (v: Int) {
+  let mk_value_with_wrong_nft = fn (v: Int) {
     value.from_lovelace(v) |> value.add(some_policy_id, "wtf", 1)
   }
+
   let d = LotDatum {
       seller:     seller_pub_key_hash,
       deadline:   10,
@@ -564,7 +537,7 @@ test test_correct_bid_output_value_3() fail {
                               |> add_input(1, some_pub_key_hash, 100, None)
                               |> add_output1(some_pub_key_hash, some_value, None)
                               |> add_output1(refund_pub_key_hash, some_value_1000, None)
-                              |> add_output1(my_pub_key_hash, mk_value_with_nft(1010), Some(dnew))
+                              |> add_output1(my_pub_key_hash, mk_value_with_wrong_nft(1010), Some(dnew))
   )
   auction(d, r, c)
 }
@@ -573,7 +546,7 @@ test test_correct_bid_output_value_3() fail {
 test test_correct_bid_output_value_4() fail {
   let some_value = value.from_lovelace(100)
   let some_value_1000 = value.from_lovelace(1000)
-  let mk_value_with_nft = fn (v: Int) {
+  let mk_value_with_2nft = fn (v: Int) {
     value.from_lovelace(v) |> value.add(some_policy_id, "wtf", 1)
                            |> value.add(some_policy_id, some_asset_name, 1)
   }
@@ -597,7 +570,7 @@ test test_correct_bid_output_value_4() fail {
                               |> add_input(1, some_pub_key_hash, 100, None)
                               |> add_output1(some_pub_key_hash, some_value, None)
                               |> add_output1(refund_pub_key_hash, some_value_1000, None)
-                              |> add_output1(my_pub_key_hash, mk_value_with_nft(1010), Some(dnew))
+                              |> add_output1(my_pub_key_hash, mk_value_with_2nft(1010), Some(dnew))
   )
   auction(d, r, c)
 }
@@ -606,9 +579,6 @@ test test_correct_bid_output_value_4() fail {
 test test_correct_bid_refund_1() fail {
   let some_value = value.from_lovelace(100)
   let some_value_bad = value.from_lovelace(1001)
-  let mk_value_with_nft = fn (v: Int) {
-    value.from_lovelace(v) |> value.add(some_policy_id, some_asset_name, 1)
-  }
   let d = LotDatum {
       seller:     seller_pub_key_hash,
       deadline:   10,
@@ -637,9 +607,6 @@ test test_correct_bid_refund_1() fail {
 // no refund address
 test test_correct_bid_refund_2() fail {
   let some_value = value.from_lovelace(100)
-  let mk_value_with_nft = fn (v: Int) {
-    value.from_lovelace(v) |> value.add(some_policy_id, some_asset_name, 1)
-  }
   let d = LotDatum {
       seller:     seller_pub_key_hash,
       deadline:   10,
