@@ -45,9 +45,6 @@ validator {
 
     expect Spend(ownOutputRef) = ctx.purpose
     expect Some(ownInput) = find_input(ctx.transaction.inputs, ownOutputRef)
-    expect DatumHash(ownInputDatumHash) = ownInput.output.datum
-    expect Some(ownInputDatumU) = find_datum([], ctx.transaction.datums, ownInputDatumHash)
-    expect ownInputDatum : LotDatum = ownInputDatumU
 
     expect [ownOutput] = (
       let isOwnOutput = fn (o: Output) -> Bool { o.address == ownInput.output.address }
@@ -68,14 +65,13 @@ validator {
       }
     }
 
-    // FIXME: ownInputDatum == data
     let correctBidOutputDatum = fn (bid: Bid) -> Bool {
-         ownInputDatum.seller     == ownOutputDatum.seller
-      && ownInputDatum.deadline   == ownOutputDatum.deadline
-      && ownInputDatum.minBid     == ownOutputDatum.minBid
-      && ownInputDatum.currency   == ownOutputDatum.currency
-      && ownInputDatum.token      == ownOutputDatum.token
-      && Some(bid)                == ownOutputDatum.highestBid
+         data.seller     == ownOutputDatum.seller
+      && data.deadline   == ownOutputDatum.deadline
+      && data.minBid     == ownOutputDatum.minBid
+      && data.currency   == ownOutputDatum.currency
+      && data.token      == ownOutputDatum.token
+      && Some(bid)       == ownOutputDatum.highestBid
     }
 
     let correctBidOutputValue = fn (bid: Int) -> Bool {
@@ -626,6 +622,8 @@ fn run_test_(
   fixTransaction: fn (Transaction) -> Transaction,
 ) -> Bool {
 
+  let bid = 1010
+
   let d = LotDatum {
       seller:     seller_pub_key_hash,
       deadline:   10,
@@ -635,12 +633,12 @@ fn run_test_(
       highestBid: if first { None } else { Some (Bid (refund_pub_key_hash, 1000)) },
     }
 
-  let dnew = LotDatum { ..d, highestBid: Some (Bid (bidder_pub_key_hash, 1010))}
+  let dnew = LotDatum { ..d, highestBid: Some (Bid (bidder_pub_key_hash, bid))}
 
   let r = MakeBid (
     Bid {
       bidOwner: bidder_pub_key_hash,
-      value: 1010,
+      value: bid,
     }
   )
 
