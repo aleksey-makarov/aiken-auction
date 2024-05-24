@@ -208,54 +208,6 @@ fn add_output(p: Transaction, address: PubKeyHash, value: Value, maybeBid: Optio
   }
 }
 
-test test_mk_output_reference() {
-  mk_output_reference(0) == mk_output_reference(0)
-}
-
-test test_mk_output_reference_1() fail {
-  mk_output_reference(0) == mk_output_reference(1)
-}
-
-test test_add_input() {
-  let d = LotDatum {
-    seller:     my_pub_key_hash,
-    deadline:   100,
-    minBid:     100,
-    currency:   some_policy_id,
-    token:      some_asset_name,
-    highestBid: None,
-  }
-  let ctx = mk_context(
-    transaction.placeholder() |> add_input(0, my_pub_key_hash, mk_value_with_nft(100), Some(d))
-                     |> add_input(1, some_pub_key_hash, value.from_lovelace(100), None)
-                     |> add_output(my_pub_key_hash, mk_value_with_nft(100), None)
-                     |> add_output(some_pub_key_hash, mk_value_with_nft(100), Some(d))
-  )
-
-  expect Spend(ownOutputRef) = ctx.purpose
-  ownOutputRef == mk_output_reference(0)
-}
-
-test test_add_input_2() {
-  let d = LotDatum {
-    seller:     my_pub_key_hash,
-    deadline:   100,
-    minBid:     100,
-    currency:   some_policy_id,
-    token:      some_asset_name,
-    highestBid: None,
-  }
-  let ctx = mk_context(
-    transaction.placeholder() |> add_input(0, my_pub_key_hash, mk_value_with_nft(100), Some(d))
-                     |> add_input(1, some_pub_key_hash, value.from_lovelace(100), None)
-                     |> add_output(my_pub_key_hash, mk_value_with_nft(100), None)
-                     |> add_output(some_pub_key_hash, mk_value_with_nft(100), Some(d))
-  )
-
-  let allOutputReferences = ctx.transaction.inputs |> list.map(fn (i: Input) { i.output_reference} )
-  allOutputReferences == [mk_output_reference(1), mk_output_reference(0)]
-}
-
 fn mk_correct_bid_output_datum_test(b: Bid, iData: LotDatum, oData: Option<LotDatum>) -> Bool {
   auction(
     iData,
@@ -585,13 +537,14 @@ fn mk_transaction(il: List<InputGen>, ol: List<OutputGen>) -> Transaction {
   list.foldl(ol, t1, fno)
 }
 
-fn run_test_(
+fn run_test(
   first: Bool,
   fixDatum: Alt<LotDatum>,
   fixRedeemer: Alt<AuctionRedeemer>,
   fixInputs: Alt<List<InputGen>>,
   fixOuputs: Alt<List<OutputGen>>,
   fixTransaction: Alt<Transaction>,
+  auction: fn (LotDatum, AuctionRedeemer, ScriptContext) -> Bool,
 ) -> Bool {
 
   let bid = 1010
@@ -633,32 +586,12 @@ fn run_test_(
   auction(fixDatum(d), fixRedeemer(r), mk_context(fixTransaction(t)))
 }
 
-fn run_test_first(
-  fixDatum: Alt<LotDatum>,
-  fixRedeemer: Alt<AuctionRedeemer>,
-  fixInputs: Alt<List<InputGen>>,
-  fixOuputs: Alt<List<OutputGen>>,
-  fixTransaction: Alt<Transaction>,
-) -> Bool {
-  run_test_(True, fixDatum, fixRedeemer, fixInputs, fixOuputs, fixTransaction)
-}
-
-fn run_test(
-  fixDatum: Alt<LotDatum>,
-  fixRedeemer: Alt<AuctionRedeemer>,
-  fixInputs: Alt<List<InputGen>>,
-  fixOuputs: Alt<List<OutputGen>>,
-  fixTransaction: Alt<Transaction>,
-) -> Bool {
-  run_test_(False, fixDatum, fixRedeemer, fixInputs, fixOuputs, fixTransaction)
-}
-
 test test_run_test_first() {
-  run_test_first(id, id, id, id, id)
+  run_test(True, id, id, id, id, id, auction)
 }
 
 test test_run_test() {
-  run_test(id, id, id, id, id)
+  run_test(False, id, id, id, id, id, auction)
 }
 
 fn fixRedeemerBid(r: AuctionRedeemer, bid: Int) -> AuctionRedeemer {
@@ -686,30 +619,62 @@ fn fixOutputAddress(ol: List<OutputGen>, address: PubKeyHash, v: Int) -> List<Ou
 
 // first bid is too small
 test test_sufficient_bid_1() fail {
-  run_test_first(id, fixRedeemerBid(_, 90), id, fixOutputAddress(_, my_pub_key_hash, 90), id)
+  run_test(True, id, fixRedeemerBid(_, 90), id, fixOutputAddress(_, my_pub_key_hash, 90), id, auction)
 }
 
 // first bid is ok (but minimal)
 test test_sufficient_bid_2() {
-  run_test_first(id, fixRedeemerBid(_, 100), id, fixOutputAddress(_, my_pub_key_hash, 100), id)
+  run_test(True, id, fixRedeemerBid(_, 100), id, fixOutputAddress(_, my_pub_key_hash, 100), id, auction)
 }
 
 // first bid is ok (quite big)
 test test_sufficient_bid_3() {
-  run_test_first(id, fixRedeemerBid(_, 1000), id, fixOutputAddress(_, my_pub_key_hash, 1000), id)
+  run_test(True, id, fixRedeemerBid(_, 1000), id, fixOutputAddress(_, my_pub_key_hash, 1000), id, auction)
 }
 
 // next bid is too small
 test test_sufficient_bid_4() fail {
-  run_test(id, fixRedeemerBid(_, 90), id, fixOutputAddress(_, my_pub_key_hash, 90), id)
+  run_test(False, id, fixRedeemerBid(_, 90), id, fixOutputAddress(_, my_pub_key_hash, 90), id, auction)
 }
 
 // next  bid is equal to previous
 test test_sufficient_bid_5() fail {
-  run_test(id, fixRedeemerBid(_, 1000), id, fixOutputAddress(_, my_pub_key_hash, 1000), id)
+  run_test(False, id, fixRedeemerBid(_, 1000), id, fixOutputAddress(_, my_pub_key_hash, 1000), id, auction)
 }
 
 // next bid is ok (quite big)
 test test_sufficient_bid_6() {
-  run_test(id, fixRedeemerBid(_, 1010), id, fixOutputAddress(_, my_pub_key_hash, 1010), id)
+  run_test(False, id, fixRedeemerBid(_, 1010), id, fixOutputAddress(_, my_pub_key_hash, 1010), id, auction)
+}
+
+test test_mk_output_reference() {
+  mk_output_reference(0) == mk_output_reference(0)
+}
+
+test test_mk_output_reference_1() fail {
+  mk_output_reference(0) == mk_output_reference(1)
+}
+
+test test_add_input() {
+  let auction1 = fn (
+    _: LotDatum,
+    _: AuctionRedeemer,
+    ctx: ScriptContext,
+  ) {
+    expect Spend(ownOutputRef) = ctx.purpose
+    ownOutputRef == mk_output_reference(0)
+  }
+  run_test(False, id, id, id, id, id, auction1)
+}
+
+test test_add_input_2() {
+  let auction1 = fn (
+    _: LotDatum,
+    _: AuctionRedeemer,
+    ctx: ScriptContext,
+  ) {
+    let allOutputReferences = ctx.transaction.inputs |> list.map(fn (i: Input) { i.output_reference } )
+    allOutputReferences == [mk_output_reference(1), mk_output_reference(0)]
+  }
+  run_test(False, id, id, id, id, id, auction1)
 }
