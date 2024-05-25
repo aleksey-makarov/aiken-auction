@@ -46,17 +46,13 @@ validator {
     expect Spend(ownOutputRef) = ctx.purpose
     expect Some(ownInput) = find_input(ctx.transaction.inputs, ownOutputRef)
 
-    expect [ownOutput] = (
-      let isOwnOutput = fn (o: Output) -> Bool { o.address == ownInput.output.address }
-      ctx.transaction.outputs |> list.filter(isOwnOutput)
-    )
-    expect DatumHash(ownOutputDatumHash) = ownOutput.datum
-    expect Some(ownOutputDatumU) = find_datum([], ctx.transaction.datums, ownOutputDatumHash)
-    expect ownOutputDatum : LotDatum = ownOutputDatumU
-
-    // ------------------------------------------------------------
-    // Predicates
-    // ------------------------------------------------------------
+    let getOwnOutput = fn () -> Output {
+      expect [ownOutput] = (
+        let isOwnOutput = fn (o: Output) -> Bool { o.address == ownInput.output.address }
+        ctx.transaction.outputs |> list.filter(isOwnOutput)
+      )
+      ownOutput
+    }
 
     let sufficientBid = fn (bid: Bid) -> Bool {
       when data.highestBid is {
@@ -66,6 +62,10 @@ validator {
     }
 
     let correctBidOutputDatum = fn (bid: Bid) -> Bool {
+      expect DatumHash(ownOutputDatumHash) = getOwnOutput().datum
+      expect Some(ownOutputDatumU) = find_datum([], ctx.transaction.datums, ownOutputDatumHash)
+      expect ownOutputDatum : LotDatum = ownOutputDatumU
+
          data.seller     == ownOutputDatum.seller
       && data.deadline   == ownOutputDatum.deadline
       && data.minBid     == ownOutputDatum.minBid
@@ -75,10 +75,10 @@ validator {
     }
 
     let correctBidOutputValue = fn (bid: Int) -> Bool {
-      ownOutput.value == (value.from_lovelace(bid) |> value.add(data.policy_id, data.asset_name, 1))
+      getOwnOutput().value == (value.from_lovelace(bid) |> value.add(data.policy_id, data.asset_name, 1))
     }
 
-    let correctBidRefund =
+    let correctBidRefund = fn () -> Bool {
       when data.highestBid is {
         None -> True
         Some(bid) -> {
@@ -93,36 +93,48 @@ validator {
           value.lovelace_of(refundOutput.value) == bid.value
         }
       }
+    }
 
     let correctBidSlotRange = True
 
     let correctCloseSlotRange = True
 
-    let getsValue = fn (_address: PubKeyHash, _v: Value) -> Bool {
-      True
+    let getsValue = fn (address: PubKeyHash, v: Value) -> Bool {
+      let vs = {
+        let o <- list.filter(ctx.transaction.outputs, _)
+        o.value == v
+      }
+      when vs is {
+        [voutput] -> voutput.address.payment_credential == VerificationKeyCredential(address)
+        _ -> False
+      }
     }
 
-    let sellerGetsToken = getsValue(data.seller, value.from_asset(data.policy_id, data.asset_name, 1))
+    let sellerGetsToken = fn () -> Bool {
+      getsValue(data.seller, value.from_asset(data.policy_id, data.asset_name, 1))
+    }
 
     let highestBidderGetsToken = True
 
     let sellerGetsHighestBid = True
 
-    let correctClose = when data.highestBid is {
-      None    ->    sellerGetsToken?
+    let correctClose = fn () -> Bool {
+      when data.highestBid is {
+        None    ->    sellerGetsToken()?
 
-      Some(_) ->    highestBidderGetsToken
-                 && sellerGetsHighestBid
+        Some(_) ->    highestBidderGetsToken
+                   && sellerGetsHighestBid
+      }
     }
 
     when redeemer is {
       MakeBid ( bid ) ->    sufficientBid(bid)?
                          && correctBidOutputDatum(bid)?
                          && correctBidOutputValue(bid.value)?
-                         && correctBidRefund?
+                         && correctBidRefund()?
                          && correctBidSlotRange
 
-      Close           ->    correctClose
+      Close           ->    correctClose()
                          && correctCloseSlotRange
     }
   }
@@ -503,8 +515,6 @@ fn run_test_close(
   auc: fn (LotDatum, AuctionRedeemer, ScriptContext) -> Bool,
 ) -> Bool {
 
-  let bid = 1010
-
   let d = LotDatum {
     seller:     seller_pub_key_hash,
     deadline:   10,
@@ -514,23 +524,25 @@ fn run_test_close(
     highestBid: if noBids { None } else { Some (Bid (refund_pub_key_hash, 1000)) },
   }
 
-  let dnew = LotDatum { ..d, highestBid: Some (Bid (bidder_pub_key_hash, bid))}
-
   let r = Close
 
-  let inputs = [
-    InputGen { tx: 0, address: my_pub_key_hash, value: mk_value_with_nft(1000), datum: Some(d) },
-    InputGen { tx: 1, address: some_pub_key_hash, value: value.from_lovelace(100), datum: None },
-  ]
-
-  let outputs1 = [
-    OutputGen { address: some_pub_key_hash, value: value.from_lovelace(100), datum: None },
-    OutputGen { address: my_pub_key_hash, value: mk_value_with_nft(1010), datum: Some(dnew) },
-  ]
-
-  let refund_output = OutputGen { address: refund_pub_key_hash, value: value.from_lovelace(1000), datum: None }
-
-  let outputs = if noBids { outputs1 } else { [ refund_output, ..outputs1 ] }
+  let (inputs, outputs) = if noBids {
+    ([
+      InputGen { tx: 0, address: my_pub_key_hash, value: mk_value_with_nft(1000), datum: Some(d) },
+      InputGen { tx: 1, address: some_pub_key_hash, value: value.from_lovelace(100), datum: None },
+    ], [
+      OutputGen { address: some_pub_key_hash,   value: value.from_lovelace(100), datum: None },
+      OutputGen { address: seller_pub_key_hash, value: value.from_asset(some_policy_id, some_asset_name, 1), datum: None },
+    ])
+  } else {
+    ([
+      InputGen { tx: 0, address: my_pub_key_hash, value: mk_value_with_nft(1000), datum: Some(d) },
+      InputGen { tx: 1, address: some_pub_key_hash, value: value.from_lovelace(100), datum: None },
+    ], [
+      OutputGen { address: some_pub_key_hash,   value: value.from_lovelace(100), datum: None },
+      OutputGen { address: seller_pub_key_hash, value: value.from_asset(some_policy_id, some_asset_name, 1), datum: None },
+    ])
+  }
 
   let t = mk_transaction(fixInputs(inputs), fixOuputs(outputs))
 
@@ -543,4 +555,19 @@ test test_run_close_no_bids() {
 
 test test_run_close() {
   run_test_close(False, id, id, id, id, id, auction)
+}
+
+fn fixOutputAddressRm(ol: List<OutputGen>, address: PubKeyHash) -> List<OutputGen> {
+  let o <- list.filter(ol, _)
+  o.address != address
+}
+
+// no output to seller
+test test_seller_gets_token_1() fail {
+  run_test_close(True, id, id, id, fixOutputAddressRm(_, seller_pub_key_hash), id, auction)
+}
+
+// wrong value sent to seller
+test test_seller_gets_token_2() fail {
+  run_test_close(True, id, id, id, fixOutputAddressValue(_, seller_pub_key_hash, value.from_lovelace(1001)), id, auction)
 }
