@@ -208,75 +208,6 @@ fn add_output(p: Transaction, address: PubKeyHash, value: Value, maybeBid: Optio
   }
 }
 
-fn mk_correct_bid_output_datum_test(b: Bid, iData: LotDatum, oData: Option<LotDatum>) -> Bool {
-  auction(
-    iData,
-    MakeBid (b),
-    mk_context(
-      transaction.placeholder() |> add_input(0, my_pub_key_hash, mk_value_with_nft(100), Some(iData))
-                       |> add_input(1, some_pub_key_hash, value.from_lovelace(100), None)
-                       |> add_output(refund_pub_key_hash, mk_value_with_nft(1000), None)
-                       |> add_output(some_pub_key_hash, mk_value_with_nft(100), None)
-                       |> add_output(my_pub_key_hash, mk_value_with_nft(1010), oData)
-    )
-  )
-}
-
-test test_correct_bid_output_datum() {
-    let bid = Bid(bidder_pub_key_hash, 1010)
-    let d = LotDatum {
-        seller:     seller_pub_key_hash,
-        deadline:   10,
-        minBid:     100,
-        currency:   some_asset_name,
-        token:      some_policy_id,
-        highestBid: Some (Bid (refund_pub_key_hash, 1000)),
-      }
-    let dnew = LotDatum { ..d, highestBid: Some(bid) }
-    mk_correct_bid_output_datum_test(bid, d, Some(dnew))
-}
-
-test test_correct_bid_output_datum_1() fail {
-    let bid = Bid(bidder_pub_key_hash, 1010)
-    let d = LotDatum {
-        seller:     seller_pub_key_hash,
-        deadline:   10,
-        minBid:     100,
-        currency:   some_asset_name,
-        token:      some_policy_id,
-        highestBid: Some (Bid (refund_pub_key_hash, 1000)),
-      }
-    let dnew = d
-    mk_correct_bid_output_datum_test(bid, d, Some(dnew))
-}
-
-test test_correct_bid_output_datum_3() fail {
-    let bid = Bid(seller_pub_key_hash, 1010)
-    let d = LotDatum {
-        seller:     bidder_pub_key_hash,
-        deadline:   10,
-        minBid:     100,
-        currency:   some_asset_name,
-        token:      some_policy_id,
-        highestBid: Some (Bid (refund_pub_key_hash, 1000)),
-      }
-    mk_correct_bid_output_datum_test(bid, d, None)
-}
-
-test test_correct_bid_output_datum_4() fail {
-    let bid = Bid(seller_pub_key_hash, 1010)
-    let d = LotDatum {
-        seller:     bidder_pub_key_hash,
-        deadline:   10,
-        minBid:     100,
-        currency:   some_asset_name,
-        token:      some_policy_id,
-        highestBid: Some (Bid (refund_pub_key_hash, 1000)),
-      }
-    let dnew = LotDatum { ..d, highestBid: Some(bid), minBid: 101 }
-    mk_correct_bid_output_datum_test(bid, d, Some(dnew))
-}
-
 test test_check_transaction_output() {
   let t = transaction.placeholder() |> add_input(0, my_pub_key_hash, mk_value_with_nft(100), None)
                            |> add_input(1, some_pub_key_hash, value.from_lovelace(100), None)
@@ -544,7 +475,7 @@ fn run_test(
   fixInputs: Alt<List<InputGen>>,
   fixOuputs: Alt<List<OutputGen>>,
   fixTransaction: Alt<Transaction>,
-  auction: fn (LotDatum, AuctionRedeemer, ScriptContext) -> Bool,
+  auc: fn (LotDatum, AuctionRedeemer, ScriptContext) -> Bool,
 ) -> Bool {
 
   let bid = 1010
@@ -568,13 +499,13 @@ fn run_test(
   )
 
   let inputs = [
-    InputGen { tx: 0, address: my_pub_key_hash, value: mk_value_with_nft(1000), datum: Some(d)},
-    InputGen { tx: 1, address: some_pub_key_hash, value: value.from_lovelace(100), datum: None},
+    InputGen { tx: 0, address: my_pub_key_hash, value: mk_value_with_nft(1000), datum: Some(d) },
+    InputGen { tx: 1, address: some_pub_key_hash, value: value.from_lovelace(100), datum: None },
   ]
 
   let outputs1 = [
-    OutputGen { address: some_pub_key_hash, value: value.from_lovelace(100), datum: None},
-    OutputGen { address: my_pub_key_hash, value: mk_value_with_nft(1010), datum: Some(dnew)},
+    OutputGen { address: some_pub_key_hash, value: value.from_lovelace(100), datum: None },
+    OutputGen { address: my_pub_key_hash, value: mk_value_with_nft(1010), datum: Some(dnew) },
   ]
 
   let refund_output = OutputGen { address: refund_pub_key_hash, value: value.from_lovelace(1000), datum: None }
@@ -583,7 +514,7 @@ fn run_test(
 
   let t = mk_transaction(fixInputs(inputs), fixOuputs(outputs))
 
-  auction(fixDatum(d), fixRedeemer(r), mk_context(fixTransaction(t)))
+  auc(fixDatum(d), fixRedeemer(r), mk_context(fixTransaction(t)))
 }
 
 test test_run_test_first() {
@@ -603,16 +534,18 @@ fn fixRedeemerBid(r: AuctionRedeemer, bid: Int) -> AuctionRedeemer {
 
 fn fixOutputAddress(ol: List<OutputGen>, address: PubKeyHash, v: Int) -> List<OutputGen> {
   let fmap = fn (o: OutputGen) -> OutputGen {
-    let value = value.from_lovelace(v) |> value.add(some_policy_id, some_asset_name, 1)
-    let datum = LotDatum {
-      seller:     seller_pub_key_hash,
-      deadline:   10,
-      minBid:     100,
-      currency:   some_asset_name,
-      token:      some_policy_id,
-      highestBid: Some (Bid (bidder_pub_key_hash,  v)),
-    }
-    if o.address == address { OutputGen {..o, value: value, datum: Some(datum)} } else { o }
+    if o.address == address {
+      let value = value.from_lovelace(v) |> value.add(some_policy_id, some_asset_name, 1)
+      let datum = LotDatum {
+        seller:     seller_pub_key_hash,
+        deadline:   10,
+        minBid:     100,
+        currency:   some_asset_name,
+        token:      some_policy_id,
+        highestBid: Some (Bid (bidder_pub_key_hash,  v)),
+      }
+      OutputGen {..o, value: value, datum: Some(datum)}
+    } else { o }
   }
   ol |> list.map(fmap)
 }
@@ -677,4 +610,42 @@ test test_add_input_2() {
     allOutputReferences == [mk_output_reference(1), mk_output_reference(0)]
   }
   run_test(False, id, id, id, id, id, auction1)
+}
+
+fn fixOutputAddressDatum(ol: List<OutputGen>, address: PubKeyHash, f: fn (LotDatum) -> LotDatum) -> List<OutputGen> {
+  let fmap = fn (o: OutputGen) -> OutputGen {
+    if o.address == address {
+      OutputGen {..o, datum: o.datum |> option.map(f) }
+    } else { o }
+  }
+  ol |> list.map(fmap)
+}
+
+// highest bid does no equal to the bid
+test test_correct_bid_output_datum_1() fail {
+  let f = fn (d: LotDatum) -> LotDatum {
+    when d.highestBid is {
+      None -> d
+      Some(b) -> {
+        LotDatum { ..d, highestBid: Some( Bid {..b, value: 1000} ) }
+      }
+    }
+  }
+  run_test(False, id, id, id, fixOutputAddressDatum(_, my_pub_key_hash, f), id, auction)
+}
+
+// highest bid is None
+test test_correct_bid_output_datum_2() fail {
+  let f = fn (d: LotDatum) -> LotDatum {
+    LotDatum { ..d, highestBid: None }
+  }
+  run_test(False, id, id, id, fixOutputAddressDatum(_, my_pub_key_hash, f), id, auction)
+}
+
+// highest bid is ok, but other field in the datum (minjBid) is not
+test test_correct_bid_output_datum_3() fail {
+  let f = fn (d: LotDatum) -> LotDatum {
+    LotDatum { ..d, minBid: 101 }
+  }
+  run_test(False, id, id, id, fixOutputAddressDatum(_, my_pub_key_hash, f), id, auction)
 }
