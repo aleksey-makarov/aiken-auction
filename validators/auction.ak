@@ -63,8 +63,8 @@ validator {
 
     let correctBidOutputDatum = fn (bid: Bid) -> Bool {
       expect DatumHash(ownOutputDatumHash) = getOwnOutput().datum
-      expect Some(ownOutputDatumU) = find_datum([], ctx.transaction.datums, ownOutputDatumHash)
-      expect ownOutputDatum : LotDatum = ownOutputDatumU
+      expect Some(ownOutputDatumUntyped) = find_datum([], ctx.transaction.datums, ownOutputDatumHash)
+      expect ownOutputDatum : LotDatum = ownOutputDatumUntyped
 
          data.seller     == ownOutputDatum.seller
       && data.deadline   == ownOutputDatum.deadline
@@ -114,16 +114,18 @@ validator {
       getsValue(data.seller, value.from_asset(data.policy_id, data.asset_name, 1))
     }
 
-    let highestBidderGetsToken = True
+    let highestBidderGetsToken = fn (bid: Bid) -> Bool {
+      getsValue(bid.bidOwner, value.from_asset(data.policy_id, data.asset_name, 1))
+    }
 
     let sellerGetsHighestBid = True
 
     let correctClose = fn () -> Bool {
       when data.highestBid is {
-        None    ->    sellerGetsToken()?
+        None      ->    sellerGetsToken()?
 
-        Some(_) ->    highestBidderGetsToken
-                   && sellerGetsHighestBid
+        Some(bid) ->    highestBidderGetsToken(bid)?
+                     && sellerGetsHighestBid
       }
     }
 
@@ -540,7 +542,7 @@ fn run_test_close(
       InputGen { tx: 1, address: some_pub_key_hash, value: value.from_lovelace(100), datum: None },
     ], [
       OutputGen { address: some_pub_key_hash,   value: value.from_lovelace(100), datum: None },
-      OutputGen { address: seller_pub_key_hash, value: value.from_asset(some_policy_id, some_asset_name, 1), datum: None },
+      OutputGen { address: refund_pub_key_hash, value: value.from_asset(some_policy_id, some_asset_name, 1), datum: None },
     ])
   }
 
@@ -570,4 +572,14 @@ test test_seller_gets_token_1() fail {
 // wrong value sent to seller
 test test_seller_gets_token_2() fail {
   run_test_close(True, id, id, id, fixOutputAddressValue(_, seller_pub_key_hash, value.from_lovelace(1001)), id, auction)
+}
+
+// no output to bidder
+test test_bidder_gets_token_1() fail {
+  run_test_close(False, id, id, id, fixOutputAddressRm(_, refund_pub_key_hash), id, auction)
+}
+
+// wrong value sent to bidder
+test test_bidder_gets_token_2() fail {
+  run_test_close(False, id, id, id, fixOutputAddressValue(_, refund_pub_key_hash, value.from_lovelace(1001)), id, auction)
 }
