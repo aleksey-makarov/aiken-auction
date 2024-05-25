@@ -26,8 +26,8 @@ type LotDatum {
   seller:     PubKeyHash,
   deadline:   PosixTime,
   minBid:     Int,
-  currency:   PolicyId,
-  token:      AssetName,
+  policy_id:  PolicyId,
+  asset_name: AssetName,
   highestBid: Option<Bid>,
 }
 
@@ -69,20 +69,13 @@ validator {
          data.seller     == ownOutputDatum.seller
       && data.deadline   == ownOutputDatum.deadline
       && data.minBid     == ownOutputDatum.minBid
-      && data.currency   == ownOutputDatum.currency
-      && data.token      == ownOutputDatum.token
+      && data.policy_id  == ownOutputDatum.policy_id
+      && data.asset_name == ownOutputDatum.asset_name
       && Some(bid)       == ownOutputDatum.highestBid
     }
 
     let correctBidOutputValue = fn (bid: Int) -> Bool {
-      // this does not work:
-      // ownOutput.value == (value.from_lovelace(bid) |> value.add(data.currency, data.token, 1))
-
-      let v = ownOutput.value
-
-      list.length(value.flatten(v)) == 2
-      && value.quantity_of(v, some_policy_id, some_asset_name) == 1
-      && value.lovelace_of(v) == bid
+      ownOutput.value == (value.from_lovelace(bid) |> value.add(data.policy_id, data.asset_name, 1))
     }
 
     let correctBidRefund =
@@ -105,14 +98,18 @@ validator {
 
     let correctCloseSlotRange = True
 
-    let sellerGetsToken = True
+    let getsValue = fn (_address: PubKeyHash, _v: Value) -> Bool {
+      True
+    }
+
+    let sellerGetsToken = getsValue(data.seller, value.from_asset(data.policy_id, data.asset_name, 1))
 
     let highestBidderGetsToken = True
 
     let sellerGetsHighestBid = True
 
     let correctClose = when data.highestBid is {
-      None    ->    sellerGetsToken
+      None    ->    sellerGetsToken?
 
       Some(_) ->    highestBidderGetsToken
                  && sellerGetsHighestBid
@@ -252,7 +249,7 @@ fn mk_transaction(il: List<InputGen>, ol: List<OutputGen>) -> Transaction {
   list.foldl(ol, t1, fno)
 }
 
-fn run_test(
+fn run_test_make_bid(
   first: Bool,
   fixDatum: Alt<LotDatum>,
   fixRedeemer: Alt<AuctionRedeemer>,
@@ -265,13 +262,13 @@ fn run_test(
   let bid = 1010
 
   let d = LotDatum {
-      seller:     seller_pub_key_hash,
-      deadline:   10,
-      minBid:     100,
-      currency:   some_asset_name,
-      token:      some_policy_id,
-      highestBid: if first { None } else { Some (Bid (refund_pub_key_hash, 1000)) },
-    }
+    seller:     seller_pub_key_hash,
+    deadline:   10,
+    minBid:     100,
+    policy_id:  some_policy_id,
+    asset_name: some_asset_name,
+    highestBid: if first { None } else { Some (Bid (refund_pub_key_hash, 1000)) },
+  }
 
   let dnew = LotDatum { ..d, highestBid: Some (Bid (bidder_pub_key_hash, bid))}
 
@@ -301,12 +298,12 @@ fn run_test(
   auc(fixDatum(d), fixRedeemer(r), mk_context(fixTransaction(t)))
 }
 
-test test_run_test_first() {
-  run_test(True, id, id, id, id, id, auction)
+test test_run_make_bid_first() {
+  run_test_make_bid(True, id, id, id, id, id, auction)
 }
 
-test test_run_test() {
-  run_test(False, id, id, id, id, id, auction)
+test test_run_make_bid() {
+  run_test_make_bid(False, id, id, id, id, id, auction)
 }
 
 fn fixRedeemerBid(r: AuctionRedeemer, bid: Int) -> AuctionRedeemer {
@@ -324,8 +321,8 @@ fn fixOutputAddress(ol: List<OutputGen>, address: PubKeyHash, v: Int) -> List<Ou
         seller:     seller_pub_key_hash,
         deadline:   10,
         minBid:     100,
-        currency:   some_asset_name,
-        token:      some_policy_id,
+        policy_id:  some_policy_id,
+        asset_name: some_asset_name,
         highestBid: Some (Bid (bidder_pub_key_hash,  v)),
       }
       OutputGen {..o, value: value, datum: Some(datum)}
@@ -336,32 +333,32 @@ fn fixOutputAddress(ol: List<OutputGen>, address: PubKeyHash, v: Int) -> List<Ou
 
 // first bid is too small
 test test_sufficient_bid_1() fail {
-  run_test(True, id, fixRedeemerBid(_, 90), id, fixOutputAddress(_, my_pub_key_hash, 90), id, auction)
+  run_test_make_bid(True, id, fixRedeemerBid(_, 90), id, fixOutputAddress(_, my_pub_key_hash, 90), id, auction)
 }
 
 // first bid is ok (but minimal)
 test test_sufficient_bid_2() {
-  run_test(True, id, fixRedeemerBid(_, 100), id, fixOutputAddress(_, my_pub_key_hash, 100), id, auction)
+  run_test_make_bid(True, id, fixRedeemerBid(_, 100), id, fixOutputAddress(_, my_pub_key_hash, 100), id, auction)
 }
 
 // first bid is ok (quite big)
 test test_sufficient_bid_3() {
-  run_test(True, id, fixRedeemerBid(_, 1000), id, fixOutputAddress(_, my_pub_key_hash, 1000), id, auction)
+  run_test_make_bid(True, id, fixRedeemerBid(_, 1000), id, fixOutputAddress(_, my_pub_key_hash, 1000), id, auction)
 }
 
 // next bid is too small
 test test_sufficient_bid_4() fail {
-  run_test(False, id, fixRedeemerBid(_, 90), id, fixOutputAddress(_, my_pub_key_hash, 90), id, auction)
+  run_test_make_bid(False, id, fixRedeemerBid(_, 90), id, fixOutputAddress(_, my_pub_key_hash, 90), id, auction)
 }
 
 // next  bid is equal to previous
 test test_sufficient_bid_5() fail {
-  run_test(False, id, fixRedeemerBid(_, 1000), id, fixOutputAddress(_, my_pub_key_hash, 1000), id, auction)
+  run_test_make_bid(False, id, fixRedeemerBid(_, 1000), id, fixOutputAddress(_, my_pub_key_hash, 1000), id, auction)
 }
 
 // next bid is ok (quite big)
 test test_sufficient_bid_6() {
-  run_test(False, id, fixRedeemerBid(_, 1010), id, fixOutputAddress(_, my_pub_key_hash, 1010), id, auction)
+  run_test_make_bid(False, id, fixRedeemerBid(_, 1010), id, fixOutputAddress(_, my_pub_key_hash, 1010), id, auction)
 }
 
 test test_mk_output_reference() {
@@ -381,7 +378,7 @@ test test_add_input() {
     expect Spend(ownOutputRef) = ctx.purpose
     ownOutputRef == mk_output_reference(0)
   }
-  run_test(False, id, id, id, id, id, auction1)
+  run_test_make_bid(False, id, id, id, id, id, auction1)
 }
 
 test test_add_input_2() {
@@ -393,7 +390,7 @@ test test_add_input_2() {
     let allOutputReferences = ctx.transaction.inputs |> list.map(fn (i: Input) { i.output_reference } )
     allOutputReferences == [mk_output_reference(1), mk_output_reference(0)]
   }
-  run_test(False, id, id, id, id, id, auction1)
+  run_test_make_bid(False, id, id, id, id, id, auction1)
 }
 
 fn fixOutputAddressDatum(ol: List<OutputGen>, address: PubKeyHash, f: fn (LotDatum) -> LotDatum) -> List<OutputGen> {
@@ -415,7 +412,7 @@ test test_correct_bid_output_datum_1() fail {
       }
     }
   }
-  run_test(False, id, id, id, fixOutputAddressDatum(_, my_pub_key_hash, f), id, auction)
+  run_test_make_bid(False, id, id, id, fixOutputAddressDatum(_, my_pub_key_hash, f), id, auction)
 }
 
 // highest bid is None
@@ -423,7 +420,7 @@ test test_correct_bid_output_datum_2() fail {
   let f = fn (d: LotDatum) -> LotDatum {
     LotDatum { ..d, highestBid: None }
   }
-  run_test(False, id, id, id, fixOutputAddressDatum(_, my_pub_key_hash, f), id, auction)
+  run_test_make_bid(False, id, id, id, fixOutputAddressDatum(_, my_pub_key_hash, f), id, auction)
 }
 
 // highest bid is ok, but other field in the datum (minjBid) is not
@@ -431,7 +428,7 @@ test test_correct_bid_output_datum_3() fail {
   let f = fn (d: LotDatum) -> LotDatum {
     LotDatum { ..d, minBid: 101 }
   }
-  run_test(False, id, id, id, fixOutputAddressDatum(_, my_pub_key_hash, f), id, auction)
+  run_test_make_bid(False, id, id, id, fixOutputAddressDatum(_, my_pub_key_hash, f), id, auction)
 }
 
 test test_check_transaction_output() {
@@ -443,7 +440,7 @@ test test_check_transaction_output() {
     expect [x, _, _] = ctx.transaction.outputs
     value.lovelace_of(x.value) == 1010 && value.quantity_of(x.value, some_policy_id, some_asset_name) == 1
   }
-  run_test(False, id, id, id, id, id, auction1)
+  run_test_make_bid(False, id, id, id, id, id, auction1)
 }
 
 fn fixOutputAddressValue(ol: List<OutputGen>, address: PubKeyHash, v: Value) -> List<OutputGen> {
@@ -457,12 +454,12 @@ fn fixOutputAddressValue(ol: List<OutputGen>, address: PubKeyHash, v: Value) -> 
 
 // wrong lovelace value
 test test_correct_bid_output_value_1() fail {
-  run_test(False, id, id, id, fixOutputAddressValue(_, my_pub_key_hash, mk_value_with_nft(1000)), id, auction)
+  run_test_make_bid(False, id, id, id, fixOutputAddressValue(_, my_pub_key_hash, mk_value_with_nft(1000)), id, auction)
 }
 
 // no nft
 test test_correct_bid_output_value_2() fail {
-  run_test(False, id, id, id, fixOutputAddressValue(_, my_pub_key_hash, value.from_lovelace(1010)), id, auction)
+  run_test_make_bid(False, id, id, id, fixOutputAddressValue(_, my_pub_key_hash, value.from_lovelace(1010)), id, auction)
 }
 
 // wrong nft
@@ -470,7 +467,7 @@ test test_correct_bid_output_value_3() fail {
   let mk_value_with_wrong_nft = fn (v: Int) {
     value.from_lovelace(v) |> value.add(some_policy_id, "wtf", 1)
   }
-  run_test(False, id, id, id, fixOutputAddressValue(_, my_pub_key_hash, mk_value_with_wrong_nft(1010)), id, auction)
+  run_test_make_bid(False, id, id, id, fixOutputAddressValue(_, my_pub_key_hash, mk_value_with_wrong_nft(1010)), id, auction)
 }
 
 // one more nft
@@ -479,12 +476,12 @@ test test_correct_bid_output_value_4() fail {
     value.from_lovelace(v) |> value.add(some_policy_id, "wtf", 1)
                            |> value.add(some_policy_id, some_asset_name, 1)
   }
-  run_test(False, id, id, id, fixOutputAddressValue(_, my_pub_key_hash, mk_value_with_2nft(1010)), id, auction)
+  run_test_make_bid(False, id, id, id, fixOutputAddressValue(_, my_pub_key_hash, mk_value_with_2nft(1010)), id, auction)
 }
 
 // incorrect refund value
 test test_correct_bid_refund_1() fail {
-  run_test(False, id, id, id, fixOutputAddressValue(_, refund_pub_key_hash, value.from_lovelace(1001)), id, auction)
+  run_test_make_bid(False, id, id, id, fixOutputAddressValue(_, refund_pub_key_hash, value.from_lovelace(1001)), id, auction)
 }
 
 // no refund address
@@ -493,5 +490,57 @@ test test_correct_bid_refund_2() fail {
     let o <- list.filter(ol, _)
     o.address != refund_pub_key_hash
   }
-  run_test(False, id, id, id, rm_refund_address, id, auction)
+  run_test_make_bid(False, id, id, id, rm_refund_address, id, auction)
+}
+
+fn run_test_close(
+  noBids: Bool,
+  fixDatum: Alt<LotDatum>,
+  fixRedeemer: Alt<AuctionRedeemer>,
+  fixInputs: Alt<List<InputGen>>,
+  fixOuputs: Alt<List<OutputGen>>,
+  fixTransaction: Alt<Transaction>,
+  auc: fn (LotDatum, AuctionRedeemer, ScriptContext) -> Bool,
+) -> Bool {
+
+  let bid = 1010
+
+  let d = LotDatum {
+    seller:     seller_pub_key_hash,
+    deadline:   10,
+    minBid:     100,
+    policy_id:  some_policy_id,
+    asset_name: some_asset_name,
+    highestBid: if noBids { None } else { Some (Bid (refund_pub_key_hash, 1000)) },
+  }
+
+  let dnew = LotDatum { ..d, highestBid: Some (Bid (bidder_pub_key_hash, bid))}
+
+  let r = Close
+
+  let inputs = [
+    InputGen { tx: 0, address: my_pub_key_hash, value: mk_value_with_nft(1000), datum: Some(d) },
+    InputGen { tx: 1, address: some_pub_key_hash, value: value.from_lovelace(100), datum: None },
+  ]
+
+  let outputs1 = [
+    OutputGen { address: some_pub_key_hash, value: value.from_lovelace(100), datum: None },
+    OutputGen { address: my_pub_key_hash, value: mk_value_with_nft(1010), datum: Some(dnew) },
+  ]
+
+  let refund_output = OutputGen { address: refund_pub_key_hash, value: value.from_lovelace(1000), datum: None }
+
+  let outputs = if noBids { outputs1 } else { [ refund_output, ..outputs1 ] }
+
+  let t = mk_transaction(fixInputs(inputs), fixOuputs(outputs))
+
+  auc(fixDatum(d), fixRedeemer(r), mk_context(fixTransaction(t)))
+}
+
+test test_run_close_no_bids() {
+  run_test_close(True, id, id, id, id, id, auction)
+}
+
+test test_run_close() {
+  run_test_close(False, id, id, id, id, id, auction)
 }
