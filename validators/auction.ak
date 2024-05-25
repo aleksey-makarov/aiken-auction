@@ -105,14 +105,28 @@ validator {
 
     let correctCloseSlotRange = True
 
-    when redeemer is {
-      MakeBid ( bid ) -> sufficientBid(bid)?
-                      && correctBidOutputDatum(bid)?
-                      && correctBidOutputValue(bid.value)?
-                      && correctBidRefund?
-                      && correctBidSlotRange
+    let sellerGetsToken = True
 
-      Close           -> correctCloseSlotRange
+    let highestBidderGetsToken = True
+
+    let sellerGetsHighestBid = True
+
+    let correctClose = when data.highestBid is {
+      None    ->    sellerGetsToken
+
+      Some(_) ->    highestBidderGetsToken
+                 && sellerGetsHighestBid
+    }
+
+    when redeemer is {
+      MakeBid ( bid ) ->    sufficientBid(bid)?
+                         && correctBidOutputDatum(bid)?
+                         && correctBidOutputValue(bid.value)?
+                         && correctBidRefund?
+                         && correctBidSlotRange
+
+      Close           ->    correctClose
+                         && correctCloseSlotRange
     }
   }
 }
