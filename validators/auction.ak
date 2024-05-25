@@ -208,66 +208,6 @@ fn add_output(p: Transaction, address: PubKeyHash, value: Value, maybeBid: Optio
   }
 }
 
-// incorrect refund value
-test test_correct_bid_refund_1() fail {
-  let some_value = value.from_lovelace(100)
-  let some_value_bad = value.from_lovelace(1001)
-  let d = LotDatum {
-      seller:     seller_pub_key_hash,
-      deadline:   10,
-      minBid:     100,
-      currency:   some_asset_name,
-      token:      some_policy_id,
-      highestBid: Some (Bid (refund_pub_key_hash, 1000)),
-    }
-  let dnew = LotDatum { ..d, highestBid: Some (Bid (bidder_pub_key_hash, 1010))}
-  let r = MakeBid (
-    Bid {
-      bidOwner: bidder_pub_key_hash,
-      value: 1010,
-    }
-  )
-  let c = mk_context(
-    transaction.placeholder() |> add_input(0, my_pub_key_hash, mk_value_with_nft(1000), Some(d))
-                              |> add_input(1, some_pub_key_hash, value.from_lovelace(100), None)
-                              |> add_output(some_pub_key_hash, some_value, None)
-                              |> add_output(refund_pub_key_hash, some_value_bad, None)
-                              |> add_output(my_pub_key_hash, mk_value_with_nft(1010), Some(dnew))
-  )
-  auction(d, r, c)
-}
-
-// no refund address
-test test_correct_bid_refund_2() fail {
-  let some_value = value.from_lovelace(100)
-  let d = LotDatum {
-      seller:     seller_pub_key_hash,
-      deadline:   10,
-      minBid:     100,
-      currency:   some_asset_name,
-      token:      some_policy_id,
-      highestBid: Some (Bid (refund_pub_key_hash, 1000)),
-    }
-  let dnew = LotDatum { ..d, highestBid: Some (Bid (bidder_pub_key_hash, 1010))}
-  let r = MakeBid (
-    Bid {
-      bidOwner: bidder_pub_key_hash,
-      value: 1010,
-    }
-  )
-  let c = mk_context(
-    transaction.placeholder() |> add_input(0, my_pub_key_hash, mk_value_with_nft(1000), Some(d))
-                              |> add_input(1, some_pub_key_hash, value.from_lovelace(100), None)
-                              |> add_output(some_pub_key_hash, some_value, None)
-                              |> add_output(my_pub_key_hash, mk_value_with_nft(1010), Some(dnew))
-  )
-  auction(d, r, c)
-}
-
-// ----------------------------------------------------------------------------
-// Test suit v2
-// ----------------------------------------------------------------------------
-
 type InputGen {
   tx: Int,
   address: PubKeyHash,
@@ -526,4 +466,18 @@ test test_correct_bid_output_value_4() fail {
                            |> value.add(some_policy_id, some_asset_name, 1)
   }
   run_test(False, id, id, id, fixOutputAddressValue(_, my_pub_key_hash, mk_value_with_2nft(1010)), id, auction)
+}
+
+// incorrect refund value
+test test_correct_bid_refund_1() fail {
+  run_test(False, id, id, id, fixOutputAddressValue(_, refund_pub_key_hash, value.from_lovelace(1001)), id, auction)
+}
+
+// no refund address
+test test_correct_bid_refund_2() fail {
+  let rm_refund_address = fn (ol: List<OutputGen>) -> List<OutputGen> {
+    let o <- list.filter(ol, _)
+    o.address != refund_pub_key_hash
+  }
+  run_test(False, id, id, id, rm_refund_address, id, auction)
 }
