@@ -208,176 +208,6 @@ fn add_output(p: Transaction, address: PubKeyHash, value: Value, maybeBid: Optio
   }
 }
 
-test test_check_transaction_output() {
-  let t = transaction.placeholder() |> add_input(0, my_pub_key_hash, mk_value_with_nft(100), None)
-                           |> add_input(1, some_pub_key_hash, value.from_lovelace(100), None)
-                           |> add_output(my_pub_key_hash, mk_value_with_nft(1010), None)
-
-  expect [x] = t.outputs
-  value.lovelace_of(x.value) == 1010
-}
-
-test test_check_transaction_output_1() {
-  let t = transaction.placeholder() |> add_input(0, my_pub_key_hash, mk_value_with_nft(100), None)
-                           |> add_input(1, some_pub_key_hash, value.from_lovelace(100), None)
-                           |> add_output(my_pub_key_hash, mk_value_with_nft(1010), None)
-
-  expect [x] = t.outputs
-  value.quantity_of(x.value, some_policy_id, some_asset_name) == 1
-}
-
-test test_correct_bid_output_value() {
-  let some_value = value.from_lovelace(100)
-  let some_value_1000 = value.from_lovelace(1000)
-  let d = LotDatum {
-      seller:     seller_pub_key_hash,
-      deadline:   10,
-      minBid:     100,
-      currency:   some_asset_name,
-      token:      some_policy_id,
-      highestBid: Some (Bid (refund_pub_key_hash, 1000)),
-    }
-  let dnew = LotDatum { ..d, highestBid: Some (Bid (bidder_pub_key_hash, 1010))}
-  let r = MakeBid (
-    Bid {
-      bidOwner: bidder_pub_key_hash,
-      value: 1010,
-    }
-  )
-  let c = mk_context(
-    transaction.placeholder() |> add_input(0, my_pub_key_hash, mk_value_with_nft(1000), Some(d))
-                              |> add_input(1, some_pub_key_hash, value.from_lovelace(100), None)
-                              |> add_output(some_pub_key_hash, some_value, None)
-                              |> add_output(refund_pub_key_hash, some_value_1000, None)
-                              |> add_output(my_pub_key_hash, mk_value_with_nft(1010), Some(dnew))
-  )
-  auction(d, r, c)
-}
-
-// wrong lovelace value
-test test_correct_bid_output_value_1() fail {
-  let some_value = value.from_lovelace(100)
-  let some_value_1000 = value.from_lovelace(1000)
-  let d = LotDatum {
-      seller:     seller_pub_key_hash,
-      deadline:   10,
-      minBid:     100,
-      currency:   some_asset_name,
-      token:      some_policy_id,
-      highestBid: Some (Bid (refund_pub_key_hash, 1000)),
-    }
-  let dnew = LotDatum { ..d, highestBid: Some (Bid (bidder_pub_key_hash, 1010))}
-  let r = MakeBid (
-    Bid {
-      bidOwner: bidder_pub_key_hash,
-      value: 1010,
-    }
-  )
-  let c = mk_context(
-    transaction.placeholder() |> add_input(0, my_pub_key_hash, mk_value_with_nft(1000), Some(d))
-                              |> add_input(1, some_pub_key_hash, value.from_lovelace(100), None)
-                              |> add_output(some_pub_key_hash, some_value, None)
-                              |> add_output(refund_pub_key_hash, some_value_1000, None)
-                              |> add_output(my_pub_key_hash, mk_value_with_nft(1000), Some(dnew))
-  )
-  auction(d, r, c)
-}
-
-// no nft
-test test_correct_bid_output_value_2() fail {
-  let some_value = value.from_lovelace(100)
-  let some_value_1000 = value.from_lovelace(1000)
-  let d = LotDatum {
-      seller:     seller_pub_key_hash,
-      deadline:   10,
-      minBid:     100,
-      currency:   some_asset_name,
-      token:      some_policy_id,
-      highestBid: Some (Bid (refund_pub_key_hash, 1000)),
-    }
-  let dnew = LotDatum { ..d, highestBid: Some (Bid (bidder_pub_key_hash, 1010))}
-  let r = MakeBid (
-    Bid {
-      bidOwner: bidder_pub_key_hash,
-      value: 1010,
-    }
-  )
-  let c = mk_context(
-    transaction.placeholder() |> add_input(0, my_pub_key_hash, mk_value_with_nft(1000), Some(d))
-                              |> add_input(1, some_pub_key_hash, value.from_lovelace(100), None)
-                              |> add_output(some_pub_key_hash, some_value, None)
-                              |> add_output(refund_pub_key_hash, some_value_1000, None)
-                              |> add_output(my_pub_key_hash, value.from_lovelace(1010), Some(dnew))
-  )
-  auction(d, r, c)
-}
-
-// wrong nft
-test test_correct_bid_output_value_3() fail {
-  let some_value = value.from_lovelace(100)
-  let some_value_1000 = value.from_lovelace(1000)
-  let mk_value_with_wrong_nft = fn (v: Int) {
-    value.from_lovelace(v) |> value.add(some_policy_id, "wtf", 1)
-  }
-
-  let d = LotDatum {
-      seller:     seller_pub_key_hash,
-      deadline:   10,
-      minBid:     100,
-      currency:   some_asset_name,
-      token:      some_policy_id,
-      highestBid: Some (Bid (refund_pub_key_hash, 1000)),
-    }
-  let dnew = LotDatum { ..d, highestBid: Some (Bid (bidder_pub_key_hash, 1010))}
-  let r = MakeBid (
-    Bid {
-      bidOwner: bidder_pub_key_hash,
-      value: 1010,
-    }
-  )
-  let c = mk_context(
-    transaction.placeholder() |> add_input(0, my_pub_key_hash, mk_value_with_nft(1000), Some(d))
-                              |> add_input(1, some_pub_key_hash, value.from_lovelace(100), None)
-                              |> add_output(some_pub_key_hash, some_value, None)
-                              |> add_output(refund_pub_key_hash, some_value_1000, None)
-                              |> add_output(my_pub_key_hash, mk_value_with_wrong_nft(1010), Some(dnew))
-  )
-  auction(d, r, c)
-}
-
-// one more nft
-test test_correct_bid_output_value_4() fail {
-  let some_value = value.from_lovelace(100)
-  let some_value_1000 = value.from_lovelace(1000)
-  let mk_value_with_2nft = fn (v: Int) {
-    value.from_lovelace(v) |> value.add(some_policy_id, "wtf", 1)
-                           |> value.add(some_policy_id, some_asset_name, 1)
-  }
-  let d = LotDatum {
-      seller:     seller_pub_key_hash,
-      deadline:   10,
-      minBid:     100,
-      currency:   some_asset_name,
-      token:      some_policy_id,
-      highestBid: Some (Bid (refund_pub_key_hash, 1000)),
-    }
-  let dnew = LotDatum { ..d, highestBid: Some (Bid (bidder_pub_key_hash, 1010))}
-  let r = MakeBid (
-    Bid {
-      bidOwner: bidder_pub_key_hash,
-      value: 1010,
-    }
-  )
-  let c = mk_context(
-    transaction.placeholder() |> add_input(0, my_pub_key_hash, mk_value_with_nft(1000), Some(d))
-                              |> add_input(1, some_pub_key_hash, value.from_lovelace(100), None)
-                              |> add_output(some_pub_key_hash, some_value, None)
-                              |> add_output(refund_pub_key_hash, some_value_1000, None)
-                              |> add_output(my_pub_key_hash, mk_value_with_2nft(1010), Some(dnew))
-  )
-  auction(d, r, c)
-}
-
 // incorrect refund value
 test test_correct_bid_refund_1() fail {
   let some_value = value.from_lovelace(100)
@@ -648,4 +478,52 @@ test test_correct_bid_output_datum_3() fail {
     LotDatum { ..d, minBid: 101 }
   }
   run_test(False, id, id, id, fixOutputAddressDatum(_, my_pub_key_hash, f), id, auction)
+}
+
+test test_check_transaction_output() {
+  let auction1 = fn (
+    _: LotDatum,
+    _: AuctionRedeemer,
+    ctx: ScriptContext,
+  ) {
+    expect [x, _, _] = ctx.transaction.outputs
+    value.lovelace_of(x.value) == 1010 && value.quantity_of(x.value, some_policy_id, some_asset_name) == 1
+  }
+  run_test(False, id, id, id, id, id, auction1)
+}
+
+fn fixOutputAddressValue(ol: List<OutputGen>, address: PubKeyHash, v: Value) -> List<OutputGen> {
+  let fmap = fn (o: OutputGen) -> OutputGen {
+    if o.address == address {
+      OutputGen {..o, value: v }
+    } else { o }
+  }
+  ol |> list.map(fmap)
+}
+
+// wrong lovelace value
+test test_correct_bid_output_value_1() fail {
+  run_test(False, id, id, id, fixOutputAddressValue(_, my_pub_key_hash, mk_value_with_nft(1000)), id, auction)
+}
+
+// no nft
+test test_correct_bid_output_value_2() fail {
+  run_test(False, id, id, id, fixOutputAddressValue(_, my_pub_key_hash, value.from_lovelace(1010)), id, auction)
+}
+
+// wrong nft
+test test_correct_bid_output_value_3() fail {
+  let mk_value_with_wrong_nft = fn (v: Int) {
+    value.from_lovelace(v) |> value.add(some_policy_id, "wtf", 1)
+  }
+  run_test(False, id, id, id, fixOutputAddressValue(_, my_pub_key_hash, mk_value_with_wrong_nft(1010)), id, auction)
+}
+
+// one more nft
+test test_correct_bid_output_value_4() fail {
+  let mk_value_with_2nft = fn (v: Int) {
+    value.from_lovelace(v) |> value.add(some_policy_id, "wtf", 1)
+                           |> value.add(some_policy_id, some_asset_name, 1)
+  }
+  run_test(False, id, id, id, fixOutputAddressValue(_, my_pub_key_hash, mk_value_with_2nft(1010)), id, auction)
 }
