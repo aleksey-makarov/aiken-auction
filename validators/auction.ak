@@ -329,22 +329,22 @@ fn fixRedeemerBid(r: AuctionRedeemer, bid: Int) -> AuctionRedeemer {
   }
 }
 
-fn fixOutputAddress(ol: List<OutputGen>, address: PubKeyHash, v: Int) -> List<OutputGen> {
-  let fmap = fn (o: OutputGen) -> OutputGen {
-    if o.address == address {
-      let value = value.from_lovelace(v) |> value.add(some_policy_id, some_asset_name, 1)
-      let datum = LotDatum {
-        seller:     seller_pub_key_hash,
-        deadline:   10,
-        minBid:     100,
-        policy_id:  some_policy_id,
-        asset_name: some_asset_name,
-        highestBid: Some (Bid (bidder_pub_key_hash,  v)),
-      }
-      OutputGen {..o, value: value, datum: Some(datum)}
-    } else { o }
+fn fixDatum(d: LotDatum, v: Int) -> LotDatum {
+  let newHighestBid = when d.highestBid is {
+    None -> None
+    Some(b) -> Some(Bid { ..b, value: v } )
   }
-  ol |> list.map(fmap)
+  LotDatum { ..d, highestBid: newHighestBid }
+}
+
+fn fixOutputAddress(ol: List<OutputGen>, address: PubKeyHash, v: Int) -> List<OutputGen> {
+  let o <- list.map(ol, _)
+  if o.address == address {
+    let value = value.from_lovelace(v) |> value.add(some_policy_id, some_asset_name, 1)
+    OutputGen {..o, value: value, datum: option.map(o.datum, fixDatum(_, v))}
+  } else {
+    o
+  }
 }
 
 // first bid is too small
