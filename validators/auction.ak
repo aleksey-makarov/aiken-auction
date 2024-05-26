@@ -1,7 +1,7 @@
 use aiken/hash.{Blake2b_224, Blake2b_256, Hash, blake2b_256}
 use aiken/transaction.{
   Input, NoDatum, Output, OutputReference, ScriptContext, Spend, Transaction,
-  TransactionId, DatumHash, find_datum, find_input,
+  TransactionId, DatumHash, ValidityRange, find_datum, find_input,
 }
 use aiken/transaction/credential.{VerificationKey, Address, VerificationKeyCredential, ScriptCredential}
 use aiken/transaction/value.{PolicyId, AssetName, Value}
@@ -11,6 +11,7 @@ use aiken/dict
 use aiken/builtin
 use aiken/bytearray
 use aiken/list
+use aiken/interval
 
 type PubKeyHash = Hash<Blake2b_224, VerificationKey>
 type DataHash = Hash<Blake2b_256, Data>
@@ -95,9 +96,13 @@ validator {
       }
     }
 
-    let correctBidSlotRange = True
+    let correctBidSlotRange = fn () -> Bool {
+      interval.is_entirely_before(ctx.transaction.validity_range, data.deadline)
+    }
 
-    let correctCloseSlotRange = True
+    let correctCloseSlotRange = fn () -> Bool {
+      interval.is_entirely_after(ctx.transaction.validity_range, data.deadline)
+    }
 
     let getsValue = fn (address: PubKeyHash, v: Value) -> Bool {
       let vs = {
@@ -136,10 +141,10 @@ validator {
                          && correctBidOutputDatum(bid)?
                          && correctBidOutputValue(bid.value)?
                          && correctBidRefund()?
-                         && correctBidSlotRange
+                         && correctBidSlotRange()?
 
       Close           ->    correctClose()
-                         && correctCloseSlotRange
+                         && correctCloseSlotRange()?
     }
   }
 }
@@ -279,7 +284,7 @@ fn run_test_make_bid(
 
   let d = LotDatum {
     seller:     seller_pub_key_hash,
-    deadline:   10,
+    deadline:   10000,
     minBid:     100,
     policy_id:  some_policy_id,
     asset_name: some_asset_name,
@@ -309,7 +314,7 @@ fn run_test_make_bid(
 
   let outputs = if first { outputs1 } else { [ refund_output, ..outputs1 ] }
 
-  let t = mk_transaction(fixInputs(inputs), fixOuputs(outputs))
+  let t = Transaction { ..mk_transaction(fixInputs(inputs), fixOuputs(outputs)), validity_range: interval.entirely_before(9000) }
 
   auc(fixDatum(d), fixRedeemer(r), mk_context(fixTransaction(t)))
 }
@@ -521,7 +526,7 @@ fn run_test_close(
 
   let d = LotDatum {
     seller:     seller_pub_key_hash,
-    deadline:   10,
+    deadline:   10000,
     minBid:     100,
     policy_id:  some_policy_id,
     asset_name: some_asset_name,
@@ -549,7 +554,7 @@ fn run_test_close(
     ])
   }
 
-  let t = mk_transaction(fixInputs(inputs), fixOuputs(outputs))
+  let t = Transaction { ..mk_transaction(fixInputs(inputs), fixOuputs(outputs)), validity_range: interval.entirely_after(11000) }
 
   auc(fixDatum(d), fixRedeemer(r), mk_context(fixTransaction(t)))
 }
@@ -595,4 +600,40 @@ test test_seller_gets_highest_bid_1() fail {
 // wrong ADA value output to seller
 test test_seller_gets_highest_bid_2() fail {
   run_test_close(False, id, id, id, fixOutputAddressValue(_, seller_pub_key_hash, value.from_lovelace(1001)), id, auction)
+}
+
+fn fixTransactionValidityRange(t: Transaction, r: ValidityRange) -> Transaction {
+  Transaction { ..t, validity_range: r }
+}
+
+test test_make_bid_validity_range_1() fail {
+  run_test_make_bid(True, id, id, id, id, fixTransactionValidityRange(_, interval.everything()), auction)
+}
+
+test test_make_bid_validity_range_2() fail {
+  run_test_make_bid(False, id, id, id, id, fixTransactionValidityRange(_, interval.everything()), auction)
+}
+
+test test_make_bid_validity_range_3() fail {
+  run_test_make_bid(True, id, id, id, id, fixTransactionValidityRange(_, interval.between(9000, 11000)), auction)
+}
+
+test test_make_bid_validity_range_4() fail {
+  run_test_make_bid(True, id, id, id, id, fixTransactionValidityRange(_, interval.before(11000)), auction)
+}
+
+test test_close_validity_range_1() fail {
+  run_test_close(True, id, id, id, id, fixTransactionValidityRange(_, interval.everything()), auction)
+}
+
+test test_close_validity_range_2() fail {
+  run_test_close(False, id, id, id, id, fixTransactionValidityRange(_, interval.everything()), auction)
+}
+
+test test_close_validity_range_3() fail {
+  run_test_close(True, id, id, id, id, fixTransactionValidityRange(_, interval.between(9000, 11000)), auction)
+}
+
+test test_close_validity_range_4() fail {
+  run_test_close(True, id, id, id, id, fixTransactionValidityRange(_, interval.before(11000)), auction)
 }
