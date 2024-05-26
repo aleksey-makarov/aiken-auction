@@ -118,14 +118,16 @@ validator {
       getsValue(bid.bidOwner, value.from_asset(data.policy_id, data.asset_name, 1))
     }
 
-    let sellerGetsHighestBid = True
+    let sellerGetsHighestBid = fn (bid: Bid) -> Bool {
+      getsValue(data.seller, value.from_lovelace(bid.value))
+    }
 
     let correctClose = fn () -> Bool {
       when data.highestBid is {
         None      ->    sellerGetsToken()?
 
         Some(bid) ->    highestBidderGetsToken(bid)?
-                     && sellerGetsHighestBid
+                     && sellerGetsHighestBid(bid)?
       }
     }
 
@@ -543,6 +545,7 @@ fn run_test_close(
     ], [
       OutputGen { address: some_pub_key_hash,   value: value.from_lovelace(100), datum: None },
       OutputGen { address: refund_pub_key_hash, value: value.from_asset(some_policy_id, some_asset_name, 1), datum: None },
+      OutputGen { address: seller_pub_key_hash, value: value.from_lovelace(1000), datum: None },
     ])
   }
 
@@ -582,4 +585,14 @@ test test_bidder_gets_token_1() fail {
 // wrong value sent to bidder
 test test_bidder_gets_token_2() fail {
   run_test_close(False, id, id, id, fixOutputAddressValue(_, refund_pub_key_hash, value.from_lovelace(1001)), id, auction)
+}
+
+// no output with ADA to seller
+test test_seller_gets_highest_bid_1() fail {
+  run_test_close(False, id, id, id, fixOutputAddressRm(_, seller_pub_key_hash), id, auction)
+}
+
+// wrong ADA value output to seller
+test test_seller_gets_highest_bid_2() fail {
+  run_test_close(False, id, id, id, fixOutputAddressValue(_, seller_pub_key_hash, value.from_lovelace(1001)), id, auction)
 }
