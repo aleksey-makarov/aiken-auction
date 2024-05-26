@@ -79,8 +79,7 @@ the ADA locked by the last *bidder*.
 
 ## Status
 
-**18 May 2024**: Everything except time checking is implemented.
-There is quite a lot of tests that pass.
-I am going to redesign tests and check everything on the Preview testnet.
+**26 May 2024**: Everything is implemented and tested with 38 test cases.
+I have not tested it on (preview) chain yet.
 
 Also I am going to implement some off-chain code in TS.
