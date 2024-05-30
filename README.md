@@ -8,7 +8,7 @@
 > [Aiken](https://aiken-lang.org/)
 > programming language.
 > This is an education project for
-> [Eurgo Academy](https://education.emurgo.io/)
+> [Emurgo Academy](https://education.emurgo.io/)
 > "Cardano Developer Professional" program.
 
 This is a rewrite in Aiken of an educational project by
