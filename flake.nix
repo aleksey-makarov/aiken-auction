@@ -42,7 +42,7 @@
     devShells.${system} = rec {
       aiken-auction = with pkgs;
         mkShell {
-          packages = [vscode pkgs.deno aiken.packages.${system}.aiken xxd];
+          packages = [vscode pkgs.deno aiken.packages.${system}.aiken xxd jq];
           shellHook = ''
             export HOME=$(pwd)
             if [ -f ~/.secrets.txt ] ; then

@@ -3,7 +3,7 @@
 
 . ./functions.sh
 
-# tx_unsigned_name=$(mktemp)
+tx_unsigned_name=$(mktemp)
 # tx_signed_name=$(mktemp)
  
 #wrap terminal
@@ -12,20 +12,22 @@
 #unwrap terminal
 # echo -ne "\x1b[?7l"
 
-# "01" "QmPwTdg9xGSEroAggB5sW6VLfyAVzmGYVxWnrh5FccTfYF"
-# "02" "QmYWkzCfy3sZT9ExHFzzBXncfLw434tYVfhuzxvNFR7k1G"
-# "03" "QmSJujeMVea3bw39jFmzqUrvWfPPhhFtYvcoM9Fd26ecXn"
-# "04" "QmYJwCVQAMegQC6mWJqNrA3DmRtKC48moB5NbQgwFCbdwV"
-# "05" "QmYusLQ1AxcWVmNaXxeHvciCvn4SuJfAWwQRU7jASWWoaf"
-# "06" "Qmd2hMufefhxLoqzphnPUEd4GJqrYBQ7VPYzLzZfJuEvH5"
-# "07" "QmSma1PXmTQqEuwMoW16mYY6BJ1w9ErNTqExPxKfepTnhZ"
-# "08" "QmQjmAPQhPqVdyMWrmVJcfJoJocpz8x86jAMvHCcfDPbbE"
-# "09" "QmQpjVG4Fgo6ft5L7XTWupGpj1aijW8e8BZ8av4YqZtdYS"
-# "10" "QmRa55E1f7wecRJYFNoUkFReopuTyQyRcdAJxodb4UGWqM"
+images[0]="QmRa55E1f7wecRJYFNoUkFReopuTyQyRcdAJxodb4UGWqM"
+images[1]="QmPwTdg9xGSEroAggB5sW6VLfyAVzmGYVxWnrh5FccTfYF"
+images[2]="QmYWkzCfy3sZT9ExHFzzBXncfLw434tYVfhuzxvNFR7k1G"
+images[3]="QmSJujeMVea3bw39jFmzqUrvWfPPhhFtYvcoM9Fd26ecXn"
+images[4]="QmYJwCVQAMegQC6mWJqNrA3DmRtKC48moB5NbQgwFCbdwV"
+images[5]="QmYusLQ1AxcWVmNaXxeHvciCvn4SuJfAWwQRU7jASWWoaf"
+images[6]="Qmd2hMufefhxLoqzphnPUEd4GJqrYBQ7VPYzLzZfJuEvH5"
+images[7]="QmSma1PXmTQqEuwMoW16mYY6BJ1w9ErNTqExPxKfepTnhZ"
+images[8]="QmQjmAPQhPqVdyMWrmVJcfJoJocpz8x86jAMvHCcfDPbbE"
+images[9]="QmQpjVG4Fgo6ft5L7XTWupGpj1aijW8e8BZ8av4YqZtdYS"
+
+wallet_address=$(wallets_get_address wallet)
 
 policy_script_name="nft_policy.script"
 policy_wallet=walletB
-policy_key_hash=$(cat "$WALLETS_DIR/$policy_wallet/enterprise.vkey.hash")
+policy_key_hash=$(wallets_get_vkey_hash "$policy_wallet")
 
 cat << EOF > "$policy_script_name"
 {
@@ -48,13 +50,19 @@ tokenname_hex=$(echo -n "$tokenname" | xxd -ps | tr -d '\n')
 
 echo "Token name: $tokenname ($tokenname_hex)"
 
+for image_index in "${!images[@]}" ; do
+	echo "$image_index: ${images[image_index]}"
+done
+
+image_index=0
+
 cat << EOF > "$methadata_file_name"
 {
     "721": {
         "$policy_id": {
             "$tokenname": {
-                "name": "Sima the cat",
-                "image": "ipfs://QmPuc6FFXbPNwzN8Epzn2FyNSqhKmJv9xQcHAKRrR4vxLY",
+                "name": "$tokenname",
+                "image": "ipfs://${images[image_index]}",
                 "mediaType": "image/jpeg"
             }
         }
@@ -62,18 +70,18 @@ cat << EOF > "$methadata_file_name"
 }
 EOF
 
+set -x
+
 cardano-cli transaction build \
   --babbage-era \
   --testnet-magic 2 \
-  --tx-in '5806e2dbaddc12b5d918fb2ecb57f33934bf06f7c458e8af36809a41721c8962#1' \
+  --tx-in '0a8d2bf157c0e3eb44f224a830716443dd450f5ac02bb85a89b490add5ccafb8#0' \
   --change-address "$wallet_address" \
   --out-file "$tx_unsigned_name" \
   --mint "1 $policy_id.$tokenname_hex" \
   --mint-script-file "$policy_script_name" \
-  --required-signer-hash "$wallet_key_hash" \
+  --required-signer-hash "$policy_key_hash" \
   --metadata-json-file "$methadata_file_name" \
-
-exit
 
 #  --tx-out "$my_nami_address"+"1202490"+"1 $policyid.$tokenname1" \
 #  --tx-in 'c5ba91bf3a84e71fe8d16a3edaacf9466be598174653a4404b5471b8f84fccb3#0' \
@@ -90,7 +98,7 @@ exit
 #  --testnet-magic 2 \
 
 rm "$tx_unsigned_name"
-rm "$tx_signed_name"
+# rm "$tx_signed_name"
 
 # https://preview.cexplorer.io/tx/ca94da53136911c516520dffefe56dbdb5b126fbd222d6d3d188d3c1d04382b7
 

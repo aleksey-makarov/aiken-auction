@@ -9,26 +9,39 @@ RESET=$(tput sgr0)
 
 function error()
 {
-        msg="$1"
-        echo
-        echo -e "${YELLOW}${msg}${RESET}"
-        echo
+	local msg="$1"
+    echo -e "\n${YELLOW}${msg}${RESET}\n" >&2
+    exit
+}
+
+function wallets_get_address() {
+	local wallet="$1"
+
+	if [ ! -e "$WALLETS_DIR/$wallet" ]; then
+		error "wallet \"$wallet\" does not exist"
+	fi
+
+	cat "$WALLETS_DIR/$wallet/payment.addr"
+}
+
+function wallets_get_vkey_hash() {
+	local wallet="$1"
+
+	if [ ! -e "$WALLETS_DIR/$wallet" ]; then
+		error "wallet \"$wallet\" does not exist"
+	fi
+
+	cat "$WALLETS_DIR/$wallet/enterprise.vkey.hash"
 }
 
 function check_utxo() {
 
+	local wallet="$1"
+
 	if [ $# -ne 1 ] ; then
 	    error "usage: check_utxo wallet_name"
-	    return
 	fi
 
-	wallet_name="$1"
-
-	if [ ! -e "$WALLETS_DIR/$wallet_name" ]; then
-    	error "wallet $wallet_name does not exist"
-    	return
-	fi
-
-	address=$(cat "$WALLETS_DIR/$wallet_name"/payment.addr)
+	address=$(wallets_get_address "$wallet")
 	cardano-cli query utxo --address "$address" --testnet-magic 2
 }
