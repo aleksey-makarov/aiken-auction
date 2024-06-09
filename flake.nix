@@ -58,6 +58,8 @@
             if [ -f ~/.secrets.txt ] ; then
                 . ~/.secrets.txt
             fi
+            # cardano-cli autocompletion is broken, FIXME
+            shopt -u progcomp
           '';
         };
       default = aiken-auction;

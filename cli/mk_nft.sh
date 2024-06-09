@@ -4,7 +4,7 @@
 . ./functions.sh
 
 tx_unsigned_name=$(mktemp)
-# tx_signed_name=$(mktemp)
+tx_signed_name=$(mktemp)
  
 #wrap terminal
 # echo -ne "\x1b[?7h"
@@ -23,11 +23,22 @@ images[7]="QmSma1PXmTQqEuwMoW16mYY6BJ1w9ErNTqExPxKfepTnhZ"
 images[8]="QmQjmAPQhPqVdyMWrmVJcfJoJocpz8x86jAMvHCcfDPbbE"
 images[9]="QmQpjVG4Fgo6ft5L7XTWupGpj1aijW8e8BZ8av4YqZtdYS"
 
+for image_index in "${!images[@]}" ; do
+	echo "$image_index: ${images[image_index]}"
+done
+
+image_index=0
+
 wallet_address=$(wallets_get_address wallet)
+my_nami_address=addr_test1qzkuktkzekzwg6aepjy6pk7thwe7gwa6pk9exvl7l4ys60luj3pv9vxmhesk92yjdaz5jfrjt9kggvlfw2a7zw49kwvs8n77et
+
+utxo='0a8d2bf157c0e3eb44f224a830716443dd450f5ac02bb85a89b490add5ccafb8#0'
+utxo_signing_key_file=$(wallets_get_signing_key_file wallet)
 
 policy_script_name="nft_policy.script"
 policy_wallet=walletB
 policy_key_hash=$(wallets_get_vkey_hash "$policy_wallet")
+policy_signing_key_file=$(wallets_get_signing_key_file "$policy_wallet")
 
 cat << EOF > "$policy_script_name"
 {
@@ -45,16 +56,10 @@ policy_id=$(cardano-cli transaction policyid --script-file "$policy_script_name"
 echo "Policy ID: $policy_id"
 
 methadata_file_name="nft_methadata.json"
-tokenname="AuctionTestToken"
+tokenname="AuctionTestToken$image_index"
 tokenname_hex=$(echo -n "$tokenname" | xxd -ps | tr -d '\n')
 
 echo "Token name: $tokenname ($tokenname_hex)"
-
-for image_index in "${!images[@]}" ; do
-	echo "$image_index: ${images[image_index]}"
-done
-
-image_index=0
 
 cat << EOF > "$methadata_file_name"
 {
@@ -72,36 +77,31 @@ EOF
 
 set -x
 
-cardano-cli transaction build \
-  --babbage-era \
-  --testnet-magic 2 \
-  --tx-in '0a8d2bf157c0e3eb44f224a830716443dd450f5ac02bb85a89b490add5ccafb8#0' \
-  --change-address "$wallet_address" \
-  --out-file "$tx_unsigned_name" \
-  --mint "1 $policy_id.$tokenname_hex" \
-  --mint-script-file "$policy_script_name" \
-  --required-signer-hash "$policy_key_hash" \
-  --metadata-json-file "$methadata_file_name" \
+cardano-cli latest transaction build \
+    --testnet-magic 2 \
+    --tx-in $utxo \
+    --change-address "$wallet_address" \
+    --out-file "$tx_unsigned_name" \
+    --mint "1 $policy_id.$tokenname_hex" \
+    --mint-script-file "$policy_script_name" \
+    --required-signer-hash "$policy_key_hash" \
+    --metadata-json-file "$methadata_file_name" \
+    --tx-out "$my_nami_address"+"1193870"+"1 $policy_id.$tokenname_hex" \
 
 #  --tx-out "$my_nami_address"+"1202490"+"1 $policyid.$tokenname1" \
 #  --tx-in 'c5ba91bf3a84e71fe8d16a3edaacf9466be598174653a4404b5471b8f84fccb3#0' \
 #  --tx-out "$roberto_address"+"10000000"+"12 $policyid.$tokenname1" \
 
-# cardano-cli transaction sign \
-#   --tx-body-file "$tx_unsigned_name" \
-#   --signing-key-file "$wallet_signing_key" \
-#   --testnet-magic 2 \
-#   --out-file "$tx_signed_name"
-# 
-# cardano-cli transaction submit \
-#  --tx-file "$tx_signed_name"
-#  --testnet-magic 2 \
+cardano-cli latest transaction sign \
+    --testnet-magic 2 \
+    --tx-body-file "$tx_unsigned_name" \
+    --signing-key-file "$policy_signing_key_file" \
+    --signing-key-file "$utxo_signing_key_file" \
+    --out-file "$tx_signed_name"
+
+cardano-cli latest transaction submit \
+    --testnet-magic 2 \
+    --tx-file "$tx_signed_name"
 
 rm "$tx_unsigned_name"
-# rm "$tx_signed_name"
-
-# https://preview.cexplorer.io/tx/ca94da53136911c516520dffefe56dbdb5b126fbd222d6d3d188d3c1d04382b7
-
-
-
-
+rm "$tx_signed_name"
