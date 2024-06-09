@@ -3,15 +3,10 @@
 
 . functions.sh
 
-echo
-echo wallet:
-check_utxo wallet
+for i in $WALLETS ; do
 
 echo
-echo "wallet2:"
-check_utxo wallet2
+echo [$i]
+check_utxo "$i"
 
-echo
-echo "walletB (attic):"
-check_utxo walletB
-
+done

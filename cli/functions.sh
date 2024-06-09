@@ -14,6 +14,8 @@ function error()
 	exit
 }
 
+WALLETS="wallet wallet_nft wallet_attic"
+
 function wallets_get_address() {
 	local wallet="$1"
 	cat "$WALLETS_DIR/$wallet/payment.addr"
