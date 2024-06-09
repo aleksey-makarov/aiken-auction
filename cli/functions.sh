@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2317
 
+export CARDANO_NODE_SOCKET_PATH=$(pwd)/state-node-preview/node.socket
+
 YELLOW=$(tput setaf 3)
 RESET=$(tput sgr0)
 
