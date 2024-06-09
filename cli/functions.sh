@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2317
 
-export CARDANO_NODE_SOCKET_PATH=/run/cardano-node/node.socket
-export WALLETS_DIR=/home/amakarov/cardano/work
-
 YELLOW=$(tput setaf 3)
 RESET=$(tput sgr0)
 

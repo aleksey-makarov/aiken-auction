@@ -10,5 +10,5 @@ echo "$now ($now_unix)"
 
 echo
 echo -n "Preview: "
-du -sh "/var/lib/cardano-node/db-preview"
+# du -sh "/var/lib/cardano-node/db-preview"
 cardano-cli latest query tip --testnet-magic 2

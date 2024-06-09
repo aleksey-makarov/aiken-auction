@@ -15,6 +15,9 @@
       url = "github:aiken-lang/aiken";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    cardano-node = {
+      url = "github:IntersectMBO/cardano-node/8.9.2";
+    };
   };
 
   outputs = {
@@ -22,6 +25,7 @@
     nixpkgs,
     nix-vscode-extensions,
     aiken,
+    cardano-node,
   }: let
     system = "x86_64-linux";
 
@@ -38,11 +42,17 @@
         extensions.vscode-marketplace.laurencebahiirwa.deno-std-lib-snippets
       ];
     };
+
+    cardano-packages = [
+      cardano-node.packages."${system}"."preview/node"
+      cardano-node.packages."${system}".cardano-cli
+      aiken.packages.${system}.aiken
+    ];
   in {
     devShells.${system} = rec {
       aiken-auction = with pkgs;
         mkShell {
-          packages = [vscode pkgs.deno aiken.packages.${system}.aiken xxd jq];
+          packages = [vscode pkgs.deno xxd jq] ++ cardano-packages;
           shellHook = ''
             export HOME=$(pwd)
             if [ -f ~/.secrets.txt ] ; then
