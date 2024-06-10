@@ -79,7 +79,5 @@ the ADA locked by the last *bidder*.
 
 ## Status
 
-**26 May 2024**: Everything is implemented and tested with 38 test cases.
-I have not tested it on (preview) chain yet.
-
-Also I am going to implement some off-chain code in TS.
+**10 June 2024**: Everything is implemented and tested with 38 test cases.
+Tested listing on preview testnet

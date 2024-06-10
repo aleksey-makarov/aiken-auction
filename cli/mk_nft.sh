@@ -86,7 +86,7 @@ cardano-cli latest transaction build \
     --mint-script-file "$policy_script_name" \
     --required-signer-hash "$policy_key_hash" \
     --metadata-json-file "$methadata_file_name" \
-    --tx-out "$my_nami_address"+"1193870"+"1 $policy_id.$tokenname_hex" \
+    --tx-out "${my_nami_address}+1193870+1 ${policy_id}.${tokenname_hex}" \
 
 #  --tx-out "$my_nami_address"+"1202490"+"1 $policyid.$tokenname1" \
 #  --tx-in 'c5ba91bf3a84e71fe8d16a3edaacf9466be598174653a4404b5471b8f84fccb3#0' \

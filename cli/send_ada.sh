@@ -29,7 +29,7 @@ cardano-cli latest transaction sign \
     --testnet-magic 2 \
     --tx-body-file "$tx_unsigned_name" \
     --signing-key-file "$utxo_signing_key_file" \
-    --signing-key-file $(wallets_get_signing_key_file wallet) \
+    --signing-key-file "$(wallets_get_signing_key_file wallet)" \
     --out-file "$tx_signed_name"
 
 cardano-cli latest transaction submit \

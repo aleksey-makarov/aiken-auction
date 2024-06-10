@@ -10,3 +10,7 @@ echo [$i]
 check_utxo "$i"
 
 done
+
+echo
+echo "[contract]"
+check_utxo_contract

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2317
+# shellcheck disable=SC2317,SC2034
 
 CARDANO_NODE_SOCKET_PATH=$(pwd)/state-node-preview/node.socket
 export CARDANO_NODE_SOCKET_PATH
@@ -35,10 +35,13 @@ function check_utxo() {
 
 	local wallet="$1"
 
-	if [ $# -ne 1 ] ; then
-	    error "usage: check_utxo wallet_name"
-	fi
-
 	address=$(wallets_get_address "$wallet")
 	cardano-cli query utxo --address "$address" --testnet-magic 2
 }
+
+function check_utxo_contract() {
+
+	address="addr_test1wqngxa0yvlfhtawlyzk0k2s84uh2hc9twqjme733ea6mj3ggqc8gx"
+	cardano-cli query utxo --address "$address" --testnet-magic 2
+}
+
