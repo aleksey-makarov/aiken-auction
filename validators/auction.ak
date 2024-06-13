@@ -33,7 +33,7 @@ type LotDatum {
 }
 
 type AuctionRedeemer {
-  MakeBid(Bid)
+  MakeBid(Bid) // FIXME: no need to have bid here: just check new data against old one
   Close
 }
 
