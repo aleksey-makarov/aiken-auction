@@ -79,5 +79,6 @@ the ADA locked by the last *bidder*.
 
 ## Status
 
-**10 June 2024**: Everything is implemented and tested with 38 test cases.
-Tested listing on preview testnet
+**13 June 2024**: Everything is implemented and tested with 38 test cases.
+Closing auction has been tested on the preview chain, see the transaction
+[a866e1f106d2786e4c1f953ae8b187ba0d2c4493fbc258af0355993d7b1d3615](https://preview.cardanoscan.io/transaction/a866e1f106d2786e4c1f953ae8b187ba0d2c4493fbc258af0355993d7b1d3615).

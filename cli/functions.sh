@@ -14,7 +14,7 @@ function error()
 	exit
 }
 
-WALLETS="wallet wallet_nft wallet_attic"
+WALLETS="wallet wallet_nft"
 
 function wallets_get_address() {
 	local wallet="$1"
