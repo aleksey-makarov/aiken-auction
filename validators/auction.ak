@@ -4,7 +4,7 @@ use aiken/transaction.{
   TransactionId, DatumHash, ValidityRange, find_datum, find_input,
 }
 use aiken/transaction/credential.{VerificationKey, Address, VerificationKeyCredential, ScriptCredential}
-use aiken/transaction/value.{PolicyId, AssetName, Value}
+use aiken/transaction/value.{PolicyId, AssetName, Value, ada_asset_name, ada_policy_id}
 use aiken/time.{PosixTime}
 use aiken/option
 use aiken/dict
@@ -104,27 +104,35 @@ validator {
       interval.is_entirely_after(ctx.transaction.validity_range, data.deadline)
     }
 
-    let getsValue = fn (address: PubKeyHash, v: Value) -> Bool {
-      let vs = {
-        let o <- list.filter(ctx.transaction.outputs, _)
-        o.value == v
+    let getValueSentToAddress = fn (address: PubKeyHash, policy_id: PolicyId, asset_name: AssetName) -> Int {
+      let f = fn (o: Output, i: Int) -> Int {
+        if o.address.payment_credential == VerificationKeyCredential(address) {
+          i + value.quantity_of(o.value, policy_id, asset_name)
+        } else {
+          i
+        }
       }
-      when vs is {
-        [voutput] -> voutput.address.payment_credential == VerificationKeyCredential(address)
-        _ -> False
-      }
+      list.foldr(ctx.transaction.outputs, 0, f)
+      // let vs = {
+      //   let o <- list.filter(ctx.transaction.outputs, _)
+      //   o.value == v
+      // }
+      // when vs is {
+      //   [voutput] -> voutput.address.payment_credential == VerificationKeyCredential(address)
+      //   _ -> False
+      // }
     }
 
     let sellerGetsToken = fn () -> Bool {
-      getsValue(data.seller, value.from_asset(data.policy_id, data.asset_name, 1))
+      getValueSentToAddress(data.seller, data.policy_id, data.asset_name) >= 1
     }
 
     let highestBidderGetsToken = fn (bid: Bid) -> Bool {
-      getsValue(bid.bidOwner, value.from_asset(data.policy_id, data.asset_name, 1))
+      getValueSentToAddress(bid.bidOwner, data.policy_id, data.asset_name) >= 1
     }
 
     let sellerGetsHighestBid = fn (bid: Bid) -> Bool {
-      getsValue(data.seller, value.from_lovelace(bid.value))
+      getValueSentToAddress(data.seller, ada_policy_id, ada_asset_name) >= bid.value
     }
 
     let correctClose = fn () -> Bool {
@@ -599,7 +607,7 @@ test test_seller_gets_highest_bid_1() fail {
 
 // wrong ADA value output to seller
 test test_seller_gets_highest_bid_2() fail {
-  run_test_close(False, id, id, id, fixOutputAddressValue(_, seller_pub_key_hash, value.from_lovelace(1001)), id, auction)
+  run_test_close(False, id, id, id, fixOutputAddressValue(_, seller_pub_key_hash, value.from_lovelace(999)), id, auction)
 }
 
 fn fixTransactionValidityRange(t: Transaction, r: ValidityRange) -> Transaction {

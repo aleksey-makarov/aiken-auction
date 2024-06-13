@@ -41,7 +41,7 @@ function check_utxo() {
 
 function check_utxo_contract() {
 
-	address="addr_test1wqngxa0yvlfhtawlyzk0k2s84uh2hc9twqjme733ea6mj3ggqc8gx"
+	address=$(cat contract_address.txt)
 	cardano-cli query utxo --address "$address" --testnet-magic 2
 }
 
