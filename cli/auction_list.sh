@@ -13,7 +13,6 @@ nft_utxo_signing_key_file=$(wallets_get_signing_key_file wallet_nft)
 # Fuel
 wallet_address=$(wallets_get_address wallet)
 wallet_vkey_hash=$(wallets_get_vkey_hash wallet)
-my_nami_address=addr_test1qzkuktkzekzwg6aepjy6pk7thwe7gwa6pk9exvl7l4ys60luj3pv9vxmhesk92yjdaz5jfrjt9kggvlfw2a7zw49kwvs8n77et
 utxo='254647e7882a388b03886599cdff825ef6d6e03cfd12877b4c0f83cc82053def#1'
 utxo_signing_key_file=$(wallets_get_signing_key_file wallet)
 
@@ -62,11 +61,6 @@ cardano-cli latest transaction build \
     --change-address "$wallet_address" \
     --tx-out "$(cat contract_address.txt)+${nft}" \
     --tx-out-datum-hash-file "$data_file_name"
-
-#  --required-signer-hash "$policy_key_hash" \
-#  --tx-out "$my_nami_address"+"1202490"+"1 $policyid.$tokenname1" \
-#  --tx-in 'c5ba91bf3a84e71fe8d16a3edaacf9466be598174653a4404b5471b8f84fccb3#0' \
-#  --tx-out "$roberto_address"+"10000000"+"12 $policyid.$tokenname1" \
 
 cardano-cli latest transaction sign \
     --testnet-magic 2 \
