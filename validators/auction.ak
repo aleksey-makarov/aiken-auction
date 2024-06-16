@@ -113,14 +113,6 @@ validator {
         }
       }
       list.foldr(ctx.transaction.outputs, 0, f)
-      // let vs = {
-      //   let o <- list.filter(ctx.transaction.outputs, _)
-      //   o.value == v
-      // }
-      // when vs is {
-      //   [voutput] -> voutput.address.payment_credential == VerificationKeyCredential(address)
-      //   _ -> False
-      // }
     }
 
     let sellerGetsToken = fn () -> Bool {
