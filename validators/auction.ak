@@ -37,6 +37,10 @@ type AuctionRedeemer {
   Close
 }
 
+fn print_hash(ba: ByteArray) -> Void {
+  builtin.debug(bytearray.to_hex(ba), Void)
+}
+
 fn print_data_hashes(lba: List<ByteArray>) -> Void {
   when lba is {
     [] -> Void
@@ -73,9 +77,11 @@ validator {
 
     let correctBidOutputDatum = fn (bid: Bid) -> Bool {
 
+      expect DatumHash(ownOutputDatumHash) = getOwnOutput().datum
+
+      print_hash(ownOutputDatumHash)
       print_data_hashes(dict.keys(ctx.transaction.datums))
 
-      expect DatumHash(ownOutputDatumHash) = getOwnOutput().datum
       expect Some(ownOutputDatumUntyped) = dict.get(ctx.transaction.datums, ownOutputDatumHash)
       expect ownOutputDatum : LotDatum = ownOutputDatumUntyped
 
