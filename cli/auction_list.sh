@@ -7,18 +7,21 @@
 policy_id=232b62004de2e378406f8a0161825def83e1834b76df240324466766
 tokenname_hex=41756374696f6e54657374546f6b656e30
 nft="1219730+1 ${policy_id}.${tokenname_hex}"
-nft_utxo='254647e7882a388b03886599cdff825ef6d6e03cfd12877b4c0f83cc82053def#0'
+nft_utxo='a866e1f106d2786e4c1f953ae8b187ba0d2c4493fbc258af0355993d7b1d3615#0'
 nft_utxo_signing_key_file=$(wallets_get_signing_key_file wallet_nft)
 
 # Fuel
 wallet_address=$(wallets_get_address wallet)
 wallet_vkey_hash=$(wallets_get_vkey_hash wallet)
-utxo='254647e7882a388b03886599cdff825ef6d6e03cfd12877b4c0f83cc82053def#1'
+utxo='859b98ef217fbef871f8a36427d9c1dc9ac7f8152bf0f8dfb6a73d745064ff1f#1'
 utxo_signing_key_file=$(wallets_get_signing_key_file wallet)
 
+now=$(date '+%s')
+now_2h=$((now + S_IN_HOUR * 2))
+
 # Datum
-deadline=12345
-min_bid=1000000
+deadline=$(preview_unix_to_slot "$now_2h")
+min_bid=10000000
 
 data_file_name=data.json
 cat << EOF > "$data_file_name"

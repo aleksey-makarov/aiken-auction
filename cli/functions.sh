@@ -7,14 +7,48 @@ export CARDANO_NODE_SOCKET_PATH
 YELLOW=$(tput setaf 3)
 RESET=$(tput sgr0)
 
+WALLETS="wallet wallet_nft"
+
+S_IN_MIN=60
+S_IN_HOUR=$((S_IN_MIN * 60))
+S_IN_DAY=$((S_IN_HOUR * 24))
+
+SHELLY_UNIX=1596491091
+SHELLY_SLOT=4924800
+
+PREVIEW_UNIX=1708263608
+PREVIEW_SLOT=41607608
+
+function slot_to_unix ()
+{
+	slot="$1"
+	echo $((slot - SHELLY_SLOT + SHELLY_UNIX))
+}
+
+function unix_to_slot ()
+{
+	unix="$1"
+	echo $((unix - SHELLY_UNIX + SHELLY_SLOT))
+}
+
+function preview_slot_to_unix ()
+{
+	slot="$1"
+	echo $((slot - PREVIEW_SLOT + PREVIEW_UNIX))
+}
+
+function preview_unix_to_slot ()
+{
+	unix="$1"
+	echo $((unix - PREVIEW_UNIX + PREVIEW_SLOT))
+}
+
 function error()
 {
 	local msg="$1"
 	echo -e "\n${YELLOW}${msg}${RESET}\n" >&2
 	exit
 }
-
-WALLETS="wallet wallet_nft"
 
 function wallets_get_address() {
 	local wallet="$1"
@@ -44,4 +78,3 @@ function check_utxo_contract() {
 	address=$(cat contract_address.txt)
 	cardano-cli query utxo --address "$address" --testnet-magic 2
 }
-
