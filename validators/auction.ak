@@ -1,7 +1,7 @@
 use aiken/hash.{Blake2b_224, Blake2b_256, Hash, blake2b_256}
 use aiken/transaction.{
   Input, NoDatum, Output, OutputReference, ScriptContext, Spend, Transaction,
-  TransactionId, DatumHash, ValidityRange, find_datum, find_input,
+  TransactionId, DatumHash, ValidityRange, find_input,
 }
 use aiken/transaction/credential.{VerificationKey, Address, VerificationKeyCredential, ScriptCredential}
 use aiken/transaction/value.{PolicyId, AssetName, Value, ada_asset_name, ada_policy_id}
@@ -64,7 +64,7 @@ validator {
 
     let correctBidOutputDatum = fn (bid: Bid) -> Bool {
       expect DatumHash(ownOutputDatumHash) = getOwnOutput().datum
-      expect Some(ownOutputDatumUntyped) = find_datum([], ctx.transaction.datums, ownOutputDatumHash)
+      expect Some(ownOutputDatumUntyped) = dict.get(ctx.transaction.datums, ownOutputDatumHash)
       expect ownOutputDatum : LotDatum = ownOutputDatumUntyped
 
          data.seller     == ownOutputDatum.seller
