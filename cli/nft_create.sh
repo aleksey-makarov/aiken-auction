@@ -3,14 +3,7 @@
 
 . ./functions.sh
 
-tx_unsigned_name=$(mktemp)
-tx_signed_name=$(mktemp)
- 
-#wrap terminal
-# echo -ne "\x1b[?7h"
-
-#unwrap terminal
-# echo -ne "\x1b[?7l"
+image_index=0
 
 images[0]="QmRa55E1f7wecRJYFNoUkFReopuTyQyRcdAJxodb4UGWqM"
 images[1]="QmPwTdg9xGSEroAggB5sW6VLfyAVzmGYVxWnrh5FccTfYF"
@@ -23,45 +16,27 @@ images[7]="QmSma1PXmTQqEuwMoW16mYY6BJ1w9ErNTqExPxKfepTnhZ"
 images[8]="QmQjmAPQhPqVdyMWrmVJcfJoJocpz8x86jAMvHCcfDPbbE"
 images[9]="QmQpjVG4Fgo6ft5L7XTWupGpj1aijW8e8BZ8av4YqZtdYS"
 
-for image_index in "${!images[@]}" ; do
-	echo "$image_index: ${images[image_index]}"
-done
-
-image_index=0
-
-wallet_address=$(wallets_get_address wallet)
-# my_nami_address=addr_test1qzkuktkzekzwg6aepjy6pk7thwe7gwa6pk9exvl7l4ys60luj3pv9vxmhesk92yjdaz5jfrjt9kggvlfw2a7zw49kwvs8n77et
-
-utxo='7469e7216b7fe1fdc3070738a0744446cdc975ab737b1f9df9ccae2430672e6f#0'
-utxo_signing_key_file=$(wallets_get_signing_key_file wallet)
-
-policy_script_name="nft_policy.script"
-policy_wallet=wallet_nft
-policy_key_hash=$(wallets_get_vkey_hash "$policy_wallet")
-policy_signing_key_file=$(wallets_get_signing_key_file "$policy_wallet")
-
-cat << EOF > "$policy_script_name"
+cat << EOF > nft_script.json
 {
 	"type" : "all",
 	"scripts" : [
 		{
 			"type" : "sig",
-			"keyHash" : "$policy_key_hash"
+			"keyHash" : "$(wallets_get_vkey_hash wallet_nft)"
 		}
 	]
 }
 EOF
 
-policy_id=$(cardano-cli transaction policyid --script-file "$policy_script_name")
+policy_id=$(cardano-cli transaction policyid --script-file nft_script.json)
 echo "Policy ID: $policy_id"
 
-methadata_file_name="nft_methadata.json"
 tokenname="AuctionTestToken$image_index"
 tokenname_hex=$(echo -n "$tokenname" | xxd -ps | tr -d '\n')
 
 echo "Token name: $tokenname ($tokenname_hex)"
 
-cat << EOF > "$methadata_file_name"
+cat << EOF > nft_methadata.json
 {
     "721": {
         "$policy_id": {
@@ -74,6 +49,11 @@ cat << EOF > "$methadata_file_name"
     }
 }
 EOF
+
+echo "$tokenname_hex" > nft_name_hex.txt
+echo "$policy_id" > nft_policy_id.txt
+
+exit
 
 set -x
 
