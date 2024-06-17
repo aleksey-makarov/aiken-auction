@@ -19,18 +19,6 @@ SHELLY_SLOT=4924800
 PREVIEW_UNIX=1708263608
 PREVIEW_SLOT=41607608
 
-function slot_to_unix ()
-{
-	slot="$1"
-	echo $((slot - SHELLY_SLOT + SHELLY_UNIX))
-}
-
-function unix_to_slot ()
-{
-	unix="$1"
-	echo $((unix - SHELLY_UNIX + SHELLY_SLOT))
-}
-
 function preview_slot_to_unix ()
 {
 	slot="$1"
