@@ -9,10 +9,8 @@ use aiken/time.{PosixTime}
 use aiken/option
 use aiken/dict
 use aiken/builtin
-use aiken/bytearray
 use aiken/list
 use aiken/interval
-use aiken/string
 
 type PubKeyHash = Hash<Blake2b_224, VerificationKey>
 type DataHash = Hash<Blake2b_256, Data>
@@ -36,24 +34,6 @@ type LotDatum {
 type AuctionRedeemer {
   MakeBid(Bid) // FIXME: no need to have bid here: just check new data against old one
   Close
-}
-
-fn print_hash(ba: ByteArray) -> Void {
-  builtin.debug(bytearray.to_hex(ba), Void)
-}
-
-fn map_(self: List<a>, with: fn(a) -> Void) -> Void {
-  when self is {
-    [] -> Void
-    [x, ..xs] -> {
-      with(x)
-      map_(xs, with)
-    }
-  }
-}
-
-fn print_data_hashes(lba: List<ByteArray>) -> Void {
-  map_(lba, print_hash)
 }
 
 validator {
@@ -84,20 +64,6 @@ validator {
     let correctBidOutputDatum = fn (bid: Bid) -> Bool {
 
       expect DatumHash(ownOutputDatumHash) = getOwnOutput().datum
-
-      trace "<a>"
-      print_hash(ownOutputDatumHash)
-      trace "<b>"
-      print_data_hashes(dict.keys(ctx.transaction.datums))
-      trace "<c>"
-      let datums_list = dict.to_pairs(ctx.transaction.datums)
-      let print_first = fn (p: Pair<ByteArray, Data>) -> Void { print_hash(p.1st) }
-      map_(datums_list, print_first)
-      trace "<d>"
-      let len_string = string.from_int(dict.size(ctx.transaction.datums))
-      builtin.debug(len_string, Void)
-      trace "<e>"
-
       expect Some(ownOutputDatumUntyped) = dict.get(ctx.transaction.datums, ownOutputDatumHash)
       expect ownOutputDatum : LotDatum = ownOutputDatumUntyped
 
