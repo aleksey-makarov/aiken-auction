@@ -12,6 +12,7 @@ use aiken/builtin
 use aiken/list
 use aiken/interval.{Interval, IntervalBound, NegativeInfinity, Finite, PositiveInfinity}
 use aiken/string
+use aiken/bytearray
 
 type PubKeyHash = Hash<Blake2b_224, VerificationKey>
 type DataHash = Hash<Blake2b_256, Data>
@@ -55,6 +56,29 @@ fn print_inteval(i: Interval<Int>) -> Void {
 
 fn print_int(i: Int) -> Void {
   builtin.debug(string.from_int(i), Void)
+}
+
+fn map_(self: List<a>, with: fn(a) -> Void) -> Void {
+  when self is {
+    [] -> Void
+    [x, ..xs] -> {
+      with(x)
+      map_(xs, with)
+    }
+  }
+}
+
+fn print_output(o: Output) -> Void {
+  let (s, h) = when o.address.payment_credential is {
+    VerificationKeyCredential(h) -> (@"VerificationKeyCredential", h)
+    ScriptCredential(h) -> (@"ScriptCredential", h)
+  }
+  let str = string.concat(string.concat(s, @" "), bytearray.to_hex(h))
+  builtin.debug(str, Void)
+}
+
+fn print_outputs(l: List<Output>) -> Void {
+  map_(l, print_output)
 }
 
 validator {
@@ -111,6 +135,13 @@ validator {
               ScriptCredential(addr) -> addr
             } == bid.bidOwner
           }
+
+          builtin.debug(@"correctBidRefund: this:", Void)
+          builtin.debug(bytearray.to_hex(bid.bidOwner), Void)
+          builtin.debug(@"should be in this list:", Void)
+          print_outputs(ctx.transaction.outputs)
+          builtin.debug(@"-----", Void)
+
           expect [refundOutput] = outputs |> list.filter(f)
           value.lovelace_of(refundOutput.value) == bid.value
         }
