@@ -3,7 +3,7 @@ use aiken/transaction.{
   Input, NoDatum, Output, OutputReference, ScriptContext, Spend, Transaction,
   TransactionId, DatumHash, ValidityRange, find_input,
 }
-use aiken/transaction/credential.{VerificationKey, Address, VerificationKeyCredential, ScriptCredential}
+use aiken/transaction/credential.{VerificationKey, Address, VerificationKeyCredential}
 use aiken/transaction/value.{PolicyId, AssetName, Value, ada_asset_name, ada_policy_id}
 use aiken/time.{PosixTime}
 use aiken/option
@@ -12,7 +12,7 @@ use aiken/builtin
 use aiken/list
 use aiken/interval.{Interval, IntervalBound, NegativeInfinity, Finite, PositiveInfinity}
 use aiken/string
-use aiken/bytearray
+// use aiken/bytearray
 
 type PubKeyHash = Hash<Blake2b_224, VerificationKey>
 type DataHash = Hash<Blake2b_256, Data>
@@ -58,28 +58,28 @@ fn print_int(i: Int) -> Void {
   builtin.debug(string.from_int(i), Void)
 }
 
-fn map_(self: List<a>, with: fn(a) -> Void) -> Void {
-  when self is {
-    [] -> Void
-    [x, ..xs] -> {
-      with(x)
-      map_(xs, with)
-    }
-  }
-}
+// fn map_(self: List<a>, with: fn(a) -> Void) -> Void {
+//   when self is {
+//     [] -> Void
+//     [x, ..xs] -> {
+//       with(x)
+//       map_(xs, with)
+//     }
+//   }
+// }
 
-fn print_output(o: Output) -> Void {
-  let (s, h) = when o.address.payment_credential is {
-    VerificationKeyCredential(h) -> (@"VerificationKeyCredential", h)
-    ScriptCredential(h) -> (@"ScriptCredential", h)
-  }
-  let str = string.concat(string.concat(s, @" "), bytearray.to_hex(h))
-  builtin.debug(str, Void)
-}
+// fn print_output(o: Output) -> Void {
+//   let (s, h) = when o.address.payment_credential is {
+//     VerificationKeyCredential(h) -> (@"VerificationKeyCredential", h)
+//     ScriptCredential(h) -> (@"ScriptCredential", h)
+//   }
+//   let str = string.concat(string.concat(s, @" "), bytearray.to_hex(h))
+//   builtin.debug(str, Void)
+// }
 
-fn print_outputs(l: List<Output>) -> Void {
-  map_(l, print_output)
-}
+// fn print_outputs(l: List<Output>) -> Void {
+//   map_(l, print_output)
+// }
 
 validator {
   fn auction(
@@ -124,26 +124,39 @@ validator {
       getOwnOutput().value == (value.from_lovelace(bid) |> value.add(data.policy_id, data.asset_name, 1))
     }
 
+    let getValueSentToAddress = fn (address: PubKeyHash, policy_id: PolicyId, asset_name: AssetName) -> Int {
+      let f = fn (o: Output, i: Int) -> Int {
+        if o.address.payment_credential == VerificationKeyCredential(address) {
+          i + value.quantity_of(o.value, policy_id, asset_name)
+        } else {
+          i
+        }
+      }
+      list.foldr(ctx.transaction.outputs, 0, f)
+    }
+
     let correctBidRefund = fn () -> Bool {
       when data.highestBid is {
         None -> True
         Some(bid) -> {
-          let outputs = ctx.transaction.outputs
-          let f = fn (o: Output) -> Bool {
-            when o.address.payment_credential is {
-              VerificationKeyCredential(addr) -> addr
-              ScriptCredential(addr) -> addr
-            } == bid.bidOwner
-          }
+          getValueSentToAddress(bid.bidOwner, ada_policy_id, ada_asset_name) >= bid.value
 
-          builtin.debug(@"correctBidRefund: this:", Void)
-          builtin.debug(bytearray.to_hex(bid.bidOwner), Void)
-          builtin.debug(@"should be in this list:", Void)
-          print_outputs(ctx.transaction.outputs)
-          builtin.debug(@"-----", Void)
-
-          expect [refundOutput] = outputs |> list.filter(f)
-          value.lovelace_of(refundOutput.value) == bid.value
+//          let outputs = ctx.transaction.outputs
+//          let f = fn (o: Output) -> Bool {
+//            when o.address.payment_credential is {
+//              VerificationKeyCredential(addr) -> addr
+//              ScriptCredential(addr) -> addr
+//            } == bid.bidOwner
+//          }
+//
+//          builtin.debug(@"correctBidRefund: this:", Void)
+//          builtin.debug(bytearray.to_hex(bid.bidOwner), Void)
+//          builtin.debug(@"should be in this list:", Void)
+//          print_outputs(ctx.transaction.outputs)
+//          builtin.debug(@"-----", Void)
+//
+//          expect [refundOutput] = outputs |> list.filter(f)
+//          value.lovelace_of(refundOutput.value) == bid.value
         }
       }
     }
@@ -162,17 +175,6 @@ validator {
       builtin.debug(@"should be entirely before", Void)
       print_int(data.deadline)
       interval.is_entirely_after(ctx.transaction.validity_range, data.deadline)
-    }
-
-    let getValueSentToAddress = fn (address: PubKeyHash, policy_id: PolicyId, asset_name: AssetName) -> Int {
-      let f = fn (o: Output, i: Int) -> Int {
-        if o.address.payment_credential == VerificationKeyCredential(address) {
-          i + value.quantity_of(o.value, policy_id, asset_name)
-        } else {
-          i
-        }
-      }
-      list.foldr(ctx.transaction.outputs, 0, f)
     }
 
     let sellerGetsToken = fn () -> Bool {
@@ -562,7 +564,7 @@ test test_correct_bid_output_value_4() fail {
 
 // incorrect refund value
 test test_correct_bid_refund_1() fail {
-  run_test_make_bid(False, id, id, id, fixOutputAddressValue(_, refund_pub_key_hash, value.from_lovelace(1001)), id, auction)
+  run_test_make_bid(False, id, id, id, fixOutputAddressValue(_, refund_pub_key_hash, value.from_lovelace(999)), id, auction)
 }
 
 // no refund address
