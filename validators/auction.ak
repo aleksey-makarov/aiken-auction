@@ -10,7 +10,8 @@ use aiken/option
 use aiken/dict
 use aiken/builtin
 use aiken/list
-use aiken/interval
+use aiken/interval.{Interval, IntervalBound, NegativeInfinity, Finite, PositiveInfinity}
+use aiken/string
 
 type PubKeyHash = Hash<Blake2b_224, VerificationKey>
 type DataHash = Hash<Blake2b_256, Data>
@@ -34,6 +35,26 @@ type LotDatum {
 type AuctionRedeemer {
   MakeBid(Bid) // FIXME: no need to have bid here: just check new data against old one
   Close
+}
+
+fn print_interval_bound(ib: IntervalBound<Int>) -> Void {
+  when ib.bound_type is {
+    NegativeInfinity -> builtin.debug(@"NegativeInfinity", Void)
+    Finite(a) -> {
+      let str = string.concat(string.concat(@"Finite(", string.from_int(a)), @")")
+      builtin.debug(str, Void)
+    }
+    PositiveInfinity -> builtin.debug(@"PositiveInfinity", Void)
+  }
+}
+
+fn print_inteval(i: Interval<Int>) -> Void {
+  print_interval_bound(i.lower_bound)
+  print_interval_bound(i.upper_bound)
+}
+
+fn print_int(i: Int) -> Void {
+  builtin.debug(string.from_int(i), Void)
 }
 
 validator {
@@ -97,10 +118,18 @@ validator {
     }
 
     let correctBidSlotRange = fn () -> Bool {
+      builtin.debug(@"correctBidSlotRange:", Void)
+      print_inteval(ctx.transaction.validity_range)
+      builtin.debug(@"should be entirely before", Void)
+      print_int(data.deadline)
       interval.is_entirely_before(ctx.transaction.validity_range, data.deadline)
     }
 
     let correctCloseSlotRange = fn () -> Bool {
+      builtin.debug(@"correctCloseSlotRange:", Void)
+      print_inteval(ctx.transaction.validity_range)
+      builtin.debug(@"should be entirely before", Void)
+      print_int(data.deadline)
       interval.is_entirely_after(ctx.transaction.validity_range, data.deadline)
     }
 
