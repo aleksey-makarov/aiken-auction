@@ -17,6 +17,8 @@ type DataHash = Hash<Blake2b_256, Data>
 
 // ---------------------------------------------------------------------
 
+// FIXME: use inline data
+
 type Bid {
   bidOwner: PubKeyHash, // FIXME: is it possible to have the full address here so that all data to construct transactions is onchain?
   value: Int,
