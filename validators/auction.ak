@@ -12,6 +12,7 @@ use aiken/builtin
 use aiken/bytearray
 use aiken/list
 use aiken/interval
+use aiken/string
 
 type PubKeyHash = Hash<Blake2b_224, VerificationKey>
 type DataHash = Hash<Blake2b_256, Data>
@@ -41,13 +42,18 @@ fn print_hash(ba: ByteArray) -> Void {
   builtin.debug(bytearray.to_hex(ba), Void)
 }
 
-fn print_data_hashes(lba: List<ByteArray>) -> Void {
-  when lba is {
+fn map_(self: List<a>, with: fn(a) -> Void) -> Void {
+  when self is {
     [] -> Void
     [x, ..xs] -> {
-      print_data_hashes(builtin.debug(bytearray.to_hex(x), xs))
+      with(x)
+      map_(xs, with)
     }
   }
+}
+
+fn print_data_hashes(lba: List<ByteArray>) -> Void {
+  map_(lba, print_hash)
 }
 
 validator {
@@ -57,7 +63,7 @@ validator {
     ctx: ScriptContext,
   ) -> Bool {
 
-    expect Spend(ownOutputRef) = ctx.purpose
+    expect Spend(ownOutputRef) = ctx.purpose 
     expect Some(ownInput) = find_input(ctx.transaction.inputs, ownOutputRef)
 
     let getOwnOutput = fn () -> Output {
@@ -79,8 +85,18 @@ validator {
 
       expect DatumHash(ownOutputDatumHash) = getOwnOutput().datum
 
+      trace "<a>"
       print_hash(ownOutputDatumHash)
+      trace "<b>"
       print_data_hashes(dict.keys(ctx.transaction.datums))
+      trace "<c>"
+      let datums_list = dict.to_pairs(ctx.transaction.datums)
+      let print_first = fn (p: Pair<ByteArray, Data>) -> Void { print_hash(p.1st) }
+      map_(datums_list, print_first)
+      trace "<d>"
+      let len_string = string.from_int(dict.size(ctx.transaction.datums))
+      builtin.debug(len_string, Void)
+      trace "<e>"
 
       expect Some(ownOutputDatumUntyped) = dict.get(ctx.transaction.datums, ownOutputDatumHash)
       expect ownOutputDatum : LotDatum = ownOutputDatumUntyped
@@ -237,7 +253,7 @@ fn add_input(p: Transaction, output_reference: Int, address: PubKeyHash, value: 
   let t = Transaction { ..p, inputs: [input, ..p.inputs] }
 
   when maybeDataHash is {
-    Some((data, hash)) -> Transaction { ..t, datums: (p.datums |> dict.insert(key: hash, value: data, compare: bytearray.compare))}
+    Some((data, hash)) -> Transaction { ..t, datums: (p.datums |> dict.insert(key: hash, value: data))}
     None -> t
   }
 }
@@ -253,7 +269,7 @@ fn add_output(p: Transaction, address: PubKeyHash, value: Value, maybeBid: Optio
   let t = Transaction { ..p, outputs: [output, ..p.outputs] }
 
   when maybeDataHash is {
-    Some((data, hash)) -> Transaction { ..t, datums: (p.datums |> dict.insert(key: hash, value: data, compare: bytearray.compare))}
+    Some((data, hash)) -> Transaction { ..t, datums: (p.datums |> dict.insert(key: hash, value: data))}
     None -> t
   }
 }
