@@ -55,14 +55,13 @@ EOF
 
 tx_unsigned_name=$(mktemp)
 tx_signed_name=$(mktemp)
-protocol_params_name=$(mktemp)
 
 cardano-cli latest query protocol-parameters \
     --testnet-magic 2 \
-    --out-file $protocol_params_name
+    --out-file protocol-parameters.json
 
 min_utxo_x=$(cardano-cli latest transaction calculate-min-required-utxo \
-    --protocol-params-file $protocol_params_name \
+    --protocol-params-file protocol-parameters.json \
     --tx-out "$(< contract_address.txt)+${nft}" \
     --tx-out-datum-hash-file data.json)
 
@@ -103,4 +102,3 @@ cat transaction_nft.txt
 
 rm "$tx_unsigned_name"
 rm "$tx_signed_name"
-rm "$protocol_params_name"

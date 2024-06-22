@@ -9,7 +9,7 @@ ada_output="$(< transaction_nft.txt)#1"
 # ada_output="69fba33494f086e0671e098a62d46c7d4d88a11020075ae0a02c3c7e9d547724#1"
 ada_wallet=wallet
 
-seller_wallet=wallet_nft
+# seller_wallet=wallet_nft
 
 collateral_utxo='fbcee297003514d56f2dda78484e393b9b8b0ee313f10b5d126e7fe216c13847#0'
 
@@ -28,7 +28,7 @@ deadline_unix=$((deadline / 1000))
 deadline_slot=$(preview_unix_to_slot $deadline_unix)
 
 highest_bid_constructor=$(jq ".fields[5].constructor" data.json)
-if [ $highest_bid_constructor == 1 ] ; then
+if [ "$highest_bid_constructor" == 1 ] ; then
     min_bid=$(jq ".fields[2].int" data.json)
     echo "No bids so far, minimal bid: $min_bid"
     refund_command_line_argument=""
@@ -80,12 +80,12 @@ cardano-cli transaction build \
     --tx-in-script-file contract_code.txt \
     --tx-in-datum-file data.json \
     --tx-in-redeemer-file redeemer.json \
-    --tx-in $ada_output \
+    --tx-in "$ada_output" \
     --tx-in-collateral $collateral_utxo \
     --change-address "$(wallets_get_address $ada_wallet)" \
     --tx-out "$(cat contract_address.txt)+$bid+${nft}" \
     --tx-out-datum-embed-file data_new.json \
-    $refund_command_line_argument \
+    "$refund_command_line_argument" \
     --invalid-hereafter $((deadline_slot - 1)) \
     || exit 1
 

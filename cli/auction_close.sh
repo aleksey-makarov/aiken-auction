@@ -31,7 +31,7 @@ cardano-cli latest query protocol-parameters \
 
 cli_args=()
 highest_bid_constructor=$(jq ".fields[5].constructor" data.json)
-if [ $highest_bid_constructor == 1 ] ; then
+if [ "$highest_bid_constructor" == 1 ] ; then
     echo "No bids so far"
     echo "Just return the NFT to the seller"
 
@@ -86,7 +86,7 @@ cardano-cli latest transaction build \
     --tx-in-script-file contract_code.txt \
     --tx-in-datum-file data.json \
     --tx-in-redeemer-file redeemer.json \
-    --tx-in $ada_output \
+    --tx-in "$ada_output" \
     --tx-in-collateral $collateral_utxo \
     --change-address "$(wallets_get_address $ada_wallet)" \
     "${cli_args[@]}" \
