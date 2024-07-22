@@ -245,7 +245,7 @@ type OutputGen {
   datum: Option<LotDatum>,
 }
 
-type Alt<a> = fn (a) -> a
+type Auto<a> = fn (a) -> a
 
 fn mk_transaction(il: List<InputGen>, ol: List<OutputGen>) -> Transaction {
 
@@ -264,11 +264,11 @@ fn mk_transaction(il: List<InputGen>, ol: List<OutputGen>) -> Transaction {
 
 fn run_test_make_bid(
   first: Bool,
-  fixDatum: Alt<LotDatum>,
-  fixRedeemer: Alt<AuctionRedeemer>,
-  fixInputs: Alt<List<InputGen>>,
-  fixOuputs: Alt<List<OutputGen>>,
-  fixTransaction: Alt<Transaction>,
+  fixDatum: Auto<LotDatum>,
+  fixRedeemer: Auto<AuctionRedeemer>,
+  fixInputs: Auto<List<InputGen>>,
+  fixOuputs: Auto<List<OutputGen>>,
+  fixTransaction: Auto<Transaction>,
   auc: fn (LotDatum, AuctionRedeemer, ScriptContext) -> Bool,
 ) -> Bool {
 
@@ -508,11 +508,11 @@ test test_correct_bid_refund_2() fail {
 
 fn run_test_close(
   noBids: Bool,
-  fixDatum: Alt<LotDatum>,
-  fixRedeemer: Alt<AuctionRedeemer>,
-  fixInputs: Alt<List<InputGen>>,
-  fixOuputs: Alt<List<OutputGen>>,
-  fixTransaction: Alt<Transaction>,
+  fixDatum: Auto<LotDatum>,
+  fixRedeemer: Auto<AuctionRedeemer>,
+  fixInputs: Auto<List<InputGen>>,
+  fixOuputs: Auto<List<OutputGen>>,
+  fixTransaction: Auto<Transaction>,
   auc: fn (LotDatum, AuctionRedeemer, ScriptContext) -> Bool,
 ) -> Bool {
 
