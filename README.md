@@ -77,6 +77,16 @@ When the aution timeframe is over and no bids were made, *seller* should get its
 If there were bids, he should send the locked NFT to the last *bidder* and receive
 the ADA locked by the last *bidder*.
 
+## Development
+
+I don't like how `aiken fmt` works.  So I disable formatting in `vscode` (.config/VSCodium/User/settings.json):
+```
+    "[aiken]": {
+        "editor.formatOnSave": false,
+        "editor.formatOnType": false
+    }
+```
+
 ## Status
 
 **21 June 2024**:
