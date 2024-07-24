@@ -79,7 +79,7 @@ the ADA locked by the last *bidder*.
 
 ## Development
 
-I don't like how `aiken fmt` works.  So I disable formatting in `vscode` (.config/VSCodium/User/settings.json):
+I don't like how `aiken fmt` works.  So I disable formatting in `vscode` (`.config/VSCodium/User/settings.json`):
 ```
     "[aiken]": {
         "editor.formatOnSave": false,
@@ -87,8 +87,22 @@ I don't like how `aiken fmt` works.  So I disable formatting in `vscode` (.confi
     }
 ```
 
-## Status
+`flake.nix` expects `.secrets` file in the flakes's directory.
+It should be a `bash` script exporting these variables:
 
-**21 June 2024**:
-Everything is implemented and tested with 38 test cases.
-Tested on `preview` network, see `cli/auction_*.sh`
+  - `BLOCKFROST_PROJECT_ID`:  The project ID from Blockfrost.
+  - `STATE_NODE_DIR`:  The directory where the `state-node-preview` directory located.  `cardano-node-preview` script
+    uses that directory to create the database and socket in it.
+  - `WALLETS_DIR`: The directory where wallets located.  A wallet is a directory which name is the name of the wallet,
+    see `cli/functions.sh`
+
+To run cardano node on the `preview` net enter the nix development environment and start `cardano-node-preview` script
+in directory `$STATE_NODE_DIR`:
+
+```
+nix develop
+cd "$STATE_NODE_DIR"
+exec cardano-node-preview
+```
+
+Or you can run the script `run-preview-node.sh` provided by the flake.

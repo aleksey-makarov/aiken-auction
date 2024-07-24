@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2317,SC2034
 
-CARDANO_NODE_SOCKET_PATH=$(pwd)/state-node-preview/node.socket
+CARDANO_NODE_SOCKET_PATH="$STATE_NODE_DIR/state-node-preview/node.socket"
 export CARDANO_NODE_SOCKET_PATH
 
 YELLOW=$(tput setaf 3)

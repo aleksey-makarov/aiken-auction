@@ -43,20 +43,26 @@
       ];
     };
 
+    run-preview-node_sh = pkgs.writeShellScriptBin "run-preview-node.sh" ''
+      cd "$STATE_NODE_DIR" || exit 1
+      exec cardano-node-preview
+    '';
+
     cardano-packages = [
       cardano-node.packages."${system}"."preview/node"
       cardano-node.packages."${system}".cardano-cli
       aiken.packages.${system}.aiken
+      run-preview-node_sh
     ];
   in {
     devShells.${system} = rec {
       aiken-auction = with pkgs;
         mkShell {
-          packages = [vscode pkgs.deno xxd jq] ++ cardano-packages;
+          packages = [vscode deno xxd jq] ++ cardano-packages;
           shellHook = ''
             export HOME=$(pwd)
-            if [ -f ~/.secrets.txt ] ; then
-                . ~/.secrets.txt
+            if [ -f ~/.secrets ] ; then
+                . ~/.secrets
             fi
             # cardano-cli autocompletion is broken, FIXME
             shopt -u progcomp
@@ -64,5 +70,14 @@
         };
       default = aiken-auction;
     };
+
+    # FIXME:
+    # apps.${system} = rec {
+    #   cardano-node-preview = {
+    #     type = "app";
+    #     program = "${run-preview-node_sh}/bin/run-preview-node.sh";
+    #   };
+    #   default = cardano-node-preview;
+    # };
   };
 }
