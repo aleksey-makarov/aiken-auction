@@ -1,23 +1,18 @@
-use aiken/hash.{Blake2b_224, Blake2b_256, Hash, blake2b_256}
+use aiken/hash.{Blake2b_224, Hash}
 use aiken/transaction.{
-  Input, NoDatum, Output, OutputReference, ScriptContext, Spend, Transaction,
-  TransactionId, DatumHash, ValidityRange, find_input,
+  InlineDatum, Input, NoDatum, Output, OutputReference, ScriptContext, Spend, Transaction,
+  TransactionId, ValidityRange, find_input,
 }
 use aiken/transaction/credential.{VerificationKey, Address, VerificationKeyCredential}
 use aiken/transaction/value.{PolicyId, AssetName, Value, ada_asset_name, ada_policy_id}
 use aiken/time.{PosixTime}
 use aiken/option
-use aiken/dict
-use aiken/builtin
 use aiken/list
 use aiken/interval
 
 type PubKeyHash = Hash<Blake2b_224, VerificationKey>
-type DataHash = Hash<Blake2b_256, Data>
 
 // ---------------------------------------------------------------------
-
-// FIXME: use inline data
 
 type Bid {
   bidOwner: PubKeyHash, // FIXME: is it possible to have the full address here so that all data to construct transactions is onchain?
@@ -65,8 +60,7 @@ validator {
 
     let correctBidOutputDatum = fn (bid: Bid) -> Bool {
 
-      expect DatumHash(ownOutputDatumHash) = getOwnOutput().datum
-      expect Some(ownOutputDatumUntyped) = dict.get(ctx.transaction.datums, ownOutputDatumHash)
+      expect InlineDatum(ownOutputDatumUntyped) = getOwnOutput().datum
       expect ownOutputDatum : LotDatum = ownOutputDatumUntyped
 
          data.seller     == ownOutputDatum.seller
@@ -167,7 +161,7 @@ fn mk_value_with_nft(v: Int) -> Value {
   value.from_lovelace(v) |> value.add(some_policy_id, some_asset_name, 1)
 }
 
-fn mk_output(address: PubKeyHash, value: Value, maybeDataHash: Option<DataHash>) -> Output {
+fn mk_output(address: PubKeyHash, value: Value, maybeData: Option<LotDatum>) -> Output {
     Output {
       address:
         Address {
@@ -175,61 +169,36 @@ fn mk_output(address: PubKeyHash, value: Value, maybeDataHash: Option<DataHash>)
           stake_credential: None,
         },
       value: value,
-      datum: when maybeDataHash is {
-          Some(hash) -> DatumHash(hash)
+      datum: when maybeData is {
+          Some(data) -> InlineDatum(data)
           None -> NoDatum
         },
       reference_script: None,
     }
 }
 
-fn mk_lot_datum_hash(d: LotDatum) -> DataHash {
-  let aData: Data = d
-  blake2b_256(builtin.serialise_data(aData))
-}
-
 // fn composition(g: fn (b) -> c, f: fn (a) -> b) -> fn (a) -> c {
 //   fn (x) { g(f(x)) }
 // }
+// fn first (x: (a, b)) -> a { x.1st }
+// fn second(x: (a, b)) -> b { x.2nd }
 
 fn id(x: a) -> a { x }
 
-// fn first (x: (a, b)) -> a { x.1st }
-
-fn second(x: (a, b)) -> b { x.2nd }
-
 fn add_input(p: Transaction, output_reference: Int, address: PubKeyHash, value: Value, maybeBid: Option<LotDatum>) -> Transaction {
 
-  let maybeDataHash = maybeBid |> option.map(
-    fn (x) { (x, mk_lot_datum_hash(x)) }
-  )
-
-  let output = mk_output(address, value, maybeDataHash |> option.map(second))
+  let output = mk_output(address, value, maybeBid)
 
   let input = Input { output_reference: mk_output_reference(output_reference), output }
 
-  let t = Transaction { ..p, inputs: [input, ..p.inputs] }
-
-  when maybeDataHash is {
-    Some((data, hash)) -> Transaction { ..t, datums: (p.datums |> dict.insert(key: hash, value: data))}
-    None -> t
-  }
+  Transaction { ..p, inputs: [input, ..p.inputs] }
 }
 
 fn add_output(p: Transaction, address: PubKeyHash, value: Value, maybeBid: Option<LotDatum>) -> Transaction {
 
-  let maybeDataHash = maybeBid |> option.map(
-    fn (x) { (x, mk_lot_datum_hash(x)) }
-  )
+  let output = mk_output(address, value, maybeBid)
 
-  let output = mk_output(address, value, maybeDataHash |> option.map(second))
-
-  let t = Transaction { ..p, outputs: [output, ..p.outputs] }
-
-  when maybeDataHash is {
-    Some((data, hash)) -> Transaction { ..t, datums: (p.datums |> dict.insert(key: hash, value: data))}
-    None -> t
-  }
+  Transaction { ..p, outputs: [output, ..p.outputs] }
 }
 
 type InputGen {

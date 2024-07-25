@@ -3,12 +3,12 @@
 
 . ./functions.sh
 
-ada_output='927098736d1dd2fae6c92bff0eeed9ccd1bbb738f9eb3facf4aed93098ded0c7#2'
+ada_output='e6afa2630130e2830f980ac2e331655bdba08ddb7e15d2a0c8d6b04fd442006a#1'
 ada_wallet=wallet
 
 seller_wallet=wallet_nft
 
-delta=$((5 * S_IN_MIN))
+delta=$((10 * S_IN_MIN))
 # delta=$((10))
 
 # ----------------------------------------------------------
@@ -63,7 +63,7 @@ cardano-cli latest query protocol-parameters \
 min_utxo_x=$(cardano-cli latest transaction calculate-min-required-utxo \
     --protocol-params-file protocol-parameters.json \
     --tx-out "$(< contract_address.txt)+${nft}" \
-    --tx-out-datum-hash-file data.json)
+    --tx-out-inline-datum-file data.json)
 
 min_utxo="${min_utxo_x##Lovelace }"
 
@@ -77,7 +77,7 @@ cardano-cli latest transaction build \
     --tx-in $ada_output \
     --change-address "$(wallets_get_address $ada_wallet)" \
     --tx-out "$(< contract_address.txt)+${min_utxo}+${nft}" \
-    --tx-out-datum-hash-file data.json \
+    --tx-out-inline-datum-file data.json \
     --required-signer-hash "$(wallets_get_vkey_hash $seller_wallet)" \
     --metadata-json-file nft_methadata.json \
     || exit 1

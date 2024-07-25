@@ -84,7 +84,7 @@ cardano-cli latest transaction build \
     --out-file "$tx_unsigned_name" \
     --tx-in "$nft_utxo" \
     --tx-in-script-file contract_code.txt \
-    --tx-in-datum-file data.json \
+    --tx-in-inline-datum-present \
     --tx-in-redeemer-file redeemer.json \
     --tx-in "$ada_output" \
     --tx-in-collateral $collateral_utxo \

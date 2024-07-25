@@ -7,7 +7,7 @@ export CARDANO_NODE_SOCKET_PATH
 YELLOW=$(tput setaf 3)
 RESET=$(tput sgr0)
 
-WALLETS="wallet wallet_nft"
+WALLETS="wallet wallet_nft wallet_attic"
 
 S_IN_MIN=60
 S_IN_HOUR=$((S_IN_MIN * 60))

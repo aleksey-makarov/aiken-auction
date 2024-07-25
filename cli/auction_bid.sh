@@ -27,15 +27,16 @@ deadline=$(jq ".fields[1].int" data.json)
 deadline_unix=$((deadline / 1000))
 deadline_slot=$(preview_unix_to_slot $deadline_unix)
 
+refund_command_line_argument=()
 highest_bid_constructor=$(jq ".fields[5].constructor" data.json)
 if [ "$highest_bid_constructor" == 1 ] ; then
     min_bid=$(jq ".fields[2].int" data.json)
     echo "No bids so far, minimal bid: $min_bid"
-    refund_command_line_argument=""
 else
     min_bid=$(jq ".fields[5].fields[0].fields[1].int" data.json)
     echo "Highest bid: $min_bid"
-    refund_command_line_argument="--tx-out=$(wallets_get_address wallet)+$min_bid"
+    refund_command_line_argument+=( --tx-out )
+    refund_command_line_argument+=( "$(wallets_get_address wallet)+$min_bid" )
 fi
 
 bid=$((min_bid + 1000000))
@@ -72,20 +73,19 @@ set -x
 tx_unsigned_name=$(mktemp)
 tx_signed_name=$(mktemp)
 
-cardano-cli transaction build \
-    --babbage-era \
+cardano-cli latest transaction build \
     --testnet-magic 2 \
     --out-file "$tx_unsigned_name" \
     --tx-in "$nft_utxo" \
     --tx-in-script-file contract_code.txt \
-    --tx-in-datum-file data.json \
+    --tx-in-inline-datum-present \
     --tx-in-redeemer-file redeemer.json \
     --tx-in "$ada_output" \
     --tx-in-collateral $collateral_utxo \
     --change-address "$(wallets_get_address $ada_wallet)" \
     --tx-out "$(cat contract_address.txt)+$bid+${nft}" \
-    --tx-out-datum-embed-file data_new.json \
-    "$refund_command_line_argument" \
+    --tx-out-inline-datum-file  data_new.json \
+    "${refund_command_line_argument[@]}" \
     --invalid-hereafter $((deadline_slot - 1)) \
     || exit 1
 
