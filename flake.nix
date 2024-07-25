@@ -40,6 +40,7 @@
         extensions.vscode-marketplace.txpipe.aiken
         extensions.vscode-marketplace.denoland.vscode-deno
         extensions.vscode-marketplace.laurencebahiirwa.deno-std-lib-snippets
+        extensions.vscode-marketplace.timonwong.shellcheck
       ];
     };
 
@@ -58,7 +59,7 @@
     devShells.${system} = rec {
       aiken-auction = with pkgs;
         mkShell {
-          packages = [vscode deno xxd jq] ++ cardano-packages;
+          packages = [vscode deno xxd jq shellcheck] ++ cardano-packages;
           shellHook = ''
             export HOME=$(pwd)
             if [ -f ~/.secrets ] ; then
