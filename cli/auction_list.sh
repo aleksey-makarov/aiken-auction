@@ -3,12 +3,12 @@
 
 . ./functions.sh
 
-ada_output='e6afa2630130e2830f980ac2e331655bdba08ddb7e15d2a0c8d6b04fd442006a#1'
+ada_output='0fb7cb3a6bef6b90b38abaacf7e312b9cc50cfc82e4ff003e3dd3bd91cee977a#0'
 ada_wallet=wallet
 
 seller_wallet=wallet_nft
 
-delta=$((10 * S_IN_MIN))
+delta=$((200 * S_IN_MIN))
 # delta=$((10))
 
 # ----------------------------------------------------------
