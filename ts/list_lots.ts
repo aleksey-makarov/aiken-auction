@@ -3,15 +3,15 @@
 import { decode } from "https://deno.land/x/cbor@v1.5.9/index.js";
 
 function ensureDefined<T>(value: T | undefined, error_message: string): T {
-    if (value === undefined) {
-      throw new Error(error_message);
-    }
-    return value;
+  if (value === undefined) {
+    throw new Error(error_message);
+  }
+  return value;
 }
 
 function hexToUint8Array(hexString: string): Uint8Array {
   if (hexString.length % 2 !== 0) {
-    throw new Error('Wrong hex string length');
+    throw new Error("Wrong hex string length");
   }
   const arrayBuffer = new Uint8Array(hexString.length / 2);
   for (let i = 0; i < hexString.length; i += 2) {
@@ -21,13 +21,17 @@ function hexToUint8Array(hexString: string): Uint8Array {
   return arrayBuffer;
 }
 
-const project_id = ensureDefined(Deno.env.get("BLOCKFROST_PROJECT_ID"), "BLOCKFROST_PROJECT_ID is not defined")
+const project_id = ensureDefined(
+  Deno.env.get("BLOCKFROST_PROJECT_ID"),
+  "BLOCKFROST_PROJECT_ID is not defined",
+);
 
 // const tx_hash = 'f32c9868bd2a4f79f141b8a4fe2a4254bcced0f6e7d4f5eb1e8553ed818559eb'
 // const tx_id = 0
 
-const api = 'https://cardano-preview.blockfrost.io/api/v0'
-const script_address = 'addr_test1wqu0umjf6r3k6l9ae3h7k98zus2ra8tvg92pgam6j7mpxfgtwcqa9'
+const api = "https://cardano-preview.blockfrost.io/api/v0";
+const script_address =
+  "addr_test1wqu0umjf6r3k6l9ae3h7k98zus2ra8tvg92pgam6j7mpxfgtwcqa9";
 
 const resp = await fetch(api + "/addresses/" + script_address + "/utxos", {
   method: "GET",
