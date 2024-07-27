@@ -30,8 +30,7 @@ const project_id = ensureDefined(
 // const tx_id = 0
 
 const api = "https://cardano-preview.blockfrost.io/api/v0";
-const script_address =
-  "addr_test1wqu0umjf6r3k6l9ae3h7k98zus2ra8tvg92pgam6j7mpxfgtwcqa9";
+const script_address = Deno.readTextFileSync("../cli/contract_address.txt");
 
 const resp = await fetch(api + "/addresses/" + script_address + "/utxos", {
   method: "GET",
@@ -44,7 +43,7 @@ const resp = await fetch(api + "/addresses/" + script_address + "/utxos", {
 // console.log(resp.status); // 200
 // console.log(resp.headers.get("Content-Type")); // "text/html"
 
-const data = JSON.parse(await resp.text());
+const data = await resp.json();
 
 if (!Array.isArray(data)) {
   throw new Error("Expected an array");

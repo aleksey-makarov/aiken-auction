@@ -1,1 +1,3 @@
-Deno.serve((req: Request) => new Response("Hello World"));
+import { handler } from "./ts/handler.ts";
+
+Deno.serve(handler);
