@@ -41,6 +41,8 @@
         extensions.vscode-marketplace.denoland.vscode-deno
         extensions.vscode-marketplace.laurencebahiirwa.deno-std-lib-snippets
         extensions.vscode-marketplace.timonwong.shellcheck
+        extensions.vscode-marketplace-release.github.copilot
+        extensions.vscode-marketplace-release.github.copilot-chat
       ];
     };
 
