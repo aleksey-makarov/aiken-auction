@@ -1,3 +1,6 @@
+/** @jsx h */
+
+import { h, jsx } from "https://deno.land/x/sift@0.6.0/mod.ts";
 
 function ensureDefined<T>(value: T | undefined, error_message: string): T {
     if (value === undefined) {
@@ -30,11 +33,20 @@ export async function handler(_req: Request, _info: Deno.ServeHandlerInfo) : Pro
       throw new Error("Expected an array");
     }
 
-    const txt_array: string[] = [];
+    const html = (
+      <div>
+        <h1>Aiken auction</h1>
+        {data.length > 0 ? "UTXOs:" : "No UTXOs"}
+        {data.map((e, i) => (
+          <span>
+            <a href={`https://preview.beta.explorer.cardano.org/en/transaction/${e.tx_hash}#${e.output_index}`}>
+              {i + 1}
+            </a>
+            {i < data.length - 1 && ","}
+          </span>
+        ))}
+      </div>
+    );
 
-    for (const elem of data) {
-        txt_array.push(elem.tx_hash + " " + elem.output_index);
-    }
-
-    return new Response(txt_array.join("\n"));
+    return jsx(html);
 }

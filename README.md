@@ -106,3 +106,5 @@ exec cardano-node-preview
 ```
 
 Or you can run the script `run-preview-node.sh` provided by the flake.
+
+UTXOs on the contract's addres can be inspected here: [aiken-auction.deno.dev](https://aiken-auction.deno.dev/)
