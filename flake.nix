@@ -16,7 +16,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     cardano-node = {
-      url = "github:IntersectMBO/cardano-node/8.9.2";
+      url = "github:IntersectMBO/cardano-node/10.1.4";
     };
   };
 
