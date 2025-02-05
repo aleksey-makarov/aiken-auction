@@ -39,7 +39,7 @@ export async function handler(_req: Request, _info: Deno.ServeHandlerInfo) : Pro
         {data.length > 0 ? "UTXOs:" : "No UTXOs"}
         {data.map((e, i) => (
           <span>
-            <a href={`https://preview.beta.explorer.cardano.org/en/transaction/${e.tx_hash}#${e.output_index}`}>
+            <a href={`https://preview.cexplorer.io/tx/${e.tx_hash}#${e.output_index}`}>
               {i + 1}
             </a>
             {i < data.length - 1 && ","}
